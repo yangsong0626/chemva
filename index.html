@@ -2035,8 +2035,11 @@ function chNetErr(e){
   if (inClaude) return chMsg('Claude 里的这个页面不允许访问外部网站，没法连 ChEMBL。请用 GitHub Pages 版：<a href="https://yangsong0626.github.io/chemva/" target="_blank">yangsong0626.github.io/chemva</a>', 'warn');
   chMsg(`连不上 ChEMBL（${esc(e.message || e)}）。ChEMBL 偶尔会慢或维护，稍后再试。`, 'warn');
 }
+const SYS_NAMES = {'Liver microsomes': 'Microsomal', 'Hepatocyte': 'Hepatocyte', 'Plasma': '', 'ADMET': '', 'Unchecked': '', 'No relevant target': '', 'Homo sapiens': 'human', 'Rattus norvegicus': 'rat', 'Mus musculus': 'mouse', 'Canis lupus familiaris': 'dog', 'Macaca fascicularis': 'cyno'};
 function shortTarget(name, org){
   let n = (name || '').trim();
+  if (n in SYS_NAMES) return SYS_NAMES[n];
+  const cyp = n.match(/Cytochrome P450 (\w+)/i); if (cyp) return 'CYP' + cyp[1];
   const toks = n.split(/\s+/), last = toks[toks.length - 1] || '';
   if (toks.length > 1 && /^[A-Z0-9][A-Z0-9-]{1,9}$/.test(last) && /\d|[A-Z]{3,}/.test(last)) n = last;
   else if (n.length > 22) n = n.slice(0, 21) + '…';
@@ -2061,15 +2064,22 @@ async function chPickTarget(t){
   $('chList').innerHTML = '';
   const MAX = 12000;
   try {
-    let next = null, page = 0, total = null;
     const only = 'molecule_chembl_id,document_chembl_id,document_year,document_journal,standard_type,pchembl_value';
-    do {
-      chMsg(`<span class="loading"></span>读取 ${esc(t.pref_name)} 的活性数据… ${CH.acts.length}${total ? ' / ' + Math.min(total, MAX) : ''}`);
-      const js = next ? await chGet(next) : await chGet('activity.json', {target_chembl_id: t.target_chembl_id, pchembl_value__isnull: 'false', limit: 1000, only});
-      total = js.page_meta ? js.page_meta.total_count : null;
-      CH.acts.push(...(js.activities || []));
-      next = js.page_meta && js.page_meta.next; page++;
-    } while (next && CH.acts.length < MAX);
+    const q = {target_chembl_id: t.target_chembl_id, pchembl_value__isnull: 'false', limit: 1000, only};
+    chMsg(`<span class="loading"></span>读取 ${esc(t.pref_name)} 的活性数据…`);
+    const first = await chGet('activity.json', q);
+    const total = first.page_meta ? first.page_meta.total_count : (first.activities || []).length;
+    CH.acts.push(...(first.activities || []));
+    const want = Math.min(total, MAX), offsets = [];
+    for (let off = 1000; off < want; off += 1000) offsets.push(off);
+    let done = CH.acts.length;
+    const upd = () => chMsg(`<span class="loading"></span>读取 ${esc(t.pref_name)} 的活性数据… ${done} / ${want}${total > MAX ? `（共 ${total} 条，只读前 ${MAX}）` : ''}`);
+    upd();
+    const pages = new Array(offsets.length);
+    let cursor = 0;
+    const worker = async () => { while (cursor < offsets.length){ const k = cursor++; const js = await chGet('activity.json', {...q, offset: offsets[k]}); pages[k] = js.activities || []; done += pages[k].length; upd(); } };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    pages.forEach(p => CH.acts.push(...p));
     if (!CH.acts.length){ chMsg('这个靶点在 ChEMBL 里没有可用的定量活性数据（pChEMBL）。', 'warn'); return; }
     // group by document
     const by = new Map();
@@ -2140,9 +2150,10 @@ async function chLoadDoc(d){
         const tn = shortTarget(a.target_pref_name, a.target_organism);
         key = `p|${a.target_chembl_id}|${a.standard_type}`; label = `${tn} ${a.standard_type} (nM)`; kind = 'pot';
         val = Math.pow(10, 9 - parseFloat(a.pchembl_value));
-      } else if (a.assay_type === 'A' && a.standard_value != null && a.standard_type){
+      } else if ((a.assay_type === 'A' || a.assay_type === 'P') && a.standard_value != null && a.standard_type && !/^ratio/i.test(a.standard_type)){
         const u = a.standard_units ? ` (${a.standard_units})` : '';
-        key = `a|${a.standard_type}|${a.standard_units || ''}`; label = `${a.standard_type}${u}`; kind = 'adme';
+        const sys = shortTarget(a.target_pref_name, a.target_organism);
+        key = `a|${sys}|${a.standard_type}|${a.standard_units || ''}`; label = `${sys ? sys + ' ' : ''}${a.standard_type}${u}`; kind = 'adme';
         val = parseFloat(a.standard_value); rel = a.standard_relation && a.standard_relation !== '=' ? a.standard_relation.replace(/'/g, '') : '';
         if (isNaN(val)) return;
       } else return;
