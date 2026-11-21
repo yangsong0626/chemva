@@ -1,0 +1,6 @@
+ID	SMILES	HLM CLint (mL/min/kg)	RLM CLint (mL/min/kg)	MDR1-MDCK efflux ratio	Solubility pH6.8 (µg/mL)	hPPB fu (% unbound)	rPPB fu (% unbound)
+Mol56	CC(=O)Nc1ccc(C(=O)N2CCCCC2c2nc(N)ncc2-c2ccc(Cl)cc2)cc1	41	640	106	58	4	3.5
+Mol57	CC(=O)Nc1ccc(C(=O)N2CCCCC2c2nc(N)ncc2-c2cccc(Cl)c2)cc1	53	650	98	58	3.3	3.8
+Mol41	Nc1ncc(-c2cccc(C(F)(F)F)c2)c(C2CCCCN2C(=O)c2ccccc2)n1	380	1510	1.9	25	0.9	1.4
+Mol77	Cc1ncsc1C(=O)N1CCCCC1c1nc(N)ncc1-c1cccc(C(F)(F)F)c1	370	580	9.2	14	4.1	7.3
+Mol66	Cc1ncsc1C(=O)N1CCCCC1c1nc(N(C)C)ncc1-c1cccc(Cl)c1	240	1200	1.3	18	0.83	1.1

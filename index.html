@@ -1,0 +1,2003 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chemva · 化学家的出图工具</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#fff; --ink:#1d2430; --muted:#6b7380; --line:#e3e6eb;
+  --accent:#2563a8; --accent-soft:#e8f0fa; --warn:#a15c00; --warn-soft:#fff4e0;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif}
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 22px;background:#fff;border-bottom:1px solid var(--line)}
+.logo{font-weight:700;font-size:19px;letter-spacing:-.2px}
+.logo span{color:var(--accent)}
+.tag{color:var(--muted)}
+.badge{margin-left:auto;font-size:12px;color:#2f6b3f;background:#e9f6ec;border:1px solid #cfe9d6;padding:3px 9px;border-radius:99px}
+.wrap{display:grid;grid-template-columns:360px minmax(0,1fr);gap:18px;padding:18px 22px;align-items:start}
+.wrap > *{min-width:0}
+@media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr);padding:12px} .badge{margin-left:0}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:13px;margin:0 0 10px;color:var(--muted);font-weight:600;letter-spacing:.3px}
+.card h2 b{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;margin-right:6px}
+textarea{width:100%;height:170px;border:1px solid var(--line);border-radius:8px;padding:8px;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical;background:#fbfcfd;white-space:pre;overflow:auto}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+button,.btn{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:7px 12px;font:inherit;cursor:pointer}
+button:hover{border-color:#c6ccd5}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover{background:#1d5594}
+button:disabled{opacity:.5;cursor:default}
+label.file{display:inline-block}
+label.file input{display:none}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}
+select,input[type=text],input[type=number]{border:1px solid var(--line);border-radius:7px;padding:5px 7px;font:inherit;background:#fff;max-width:100%}
+.colrole{display:grid;grid-template-columns:1fr 92px 92px;gap:6px;align-items:center;font-size:12.5px;padding:5px 0;border-top:1px dashed var(--line)}
+.colrole:first-child{border-top:none}
+.colrole .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.opt{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:13px}
+.opt > span:first-child{min-width:84px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:none;border-radius:0;padding:6px 11px}
+.seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips label{font-size:12.5px;border:1px solid var(--line);border-radius:99px;padding:3px 9px;cursor:pointer;user-select:none}
+.chips input{margin:0 4px 0 0;vertical-align:-1px}
+.msg{font-size:12.5px;padding:8px 10px;border-radius:8px;margin-top:8px}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.msg.info{background:var(--accent-soft);color:#24507e}
+.out-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.out-head input.title{font-size:16px;font-weight:600;border:1px solid transparent;padding:4px 6px;min-width:260px;flex:1}
+.out-head input.title:hover,.out-head input.title:focus{border-color:var(--line)}
+.exports{display:flex;gap:8px;flex-wrap:wrap}
+.corebox{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.corebox .coresvg{border:1px solid var(--line);border-radius:8px;background:#fff}
+.corebox .meta{font-size:12.5px;color:var(--muted);max-width:440px}
+.corebox .meta code{font-size:11.5px;background:#f1f3f6;padding:1px 4px;border-radius:4px;word-break:break-all}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff;max-height:72vh}
+table.sar{border-collapse:collapse;font-size:13px;min-width:100%}
+table.sar th{position:sticky;top:0;background:#f3f5f8;z-index:1;font-weight:600;font-size:12.5px;padding:7px 8px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap;cursor:pointer;user-select:none}
+table.sar th .arrow{color:var(--accent);margin-left:3px}
+table.sar td{border-bottom:1px solid #eef0f3;border-right:1px solid #f2f3f6;padding:3px 6px;text-align:center;vertical-align:middle}
+table.sar td.id{font-weight:600;white-space:nowrap}
+table.sar td.rtext{font-size:14px}
+table.sar td.changed{box-shadow:inset 3px 0 0 #e08a00}
+table.sar tr.ref td{background:#fafbff}
+table.sar td svg{display:block;margin:auto}
+table.sar td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.empty{padding:60px 20px;text-align:center;color:var(--muted)}
+.loading{display:inline-block;width:14px;height:14px;border:2px solid #c9d4e3;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.legend{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:70px;height:10px;border-radius:3px;background:linear-gradient(90deg,#9fd8b3,#fff1a8,#f4b2a6)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1d2430;color:#fff;padding:9px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
+.toast.show{opacity:.95}
+.tabs{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-bottom:12px}
+.tabs button{border:none;border-radius:0;padding:8px 16px;font-weight:600;color:var(--muted)}
+.tabs button.on{background:var(--accent);color:#fff}
+.route-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 12px;font-size:13px}
+.route-bar .chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:99px;padding:3px 4px 3px 10px;background:#fbfcfd}
+.route-bar .chip b{color:var(--accent);font-weight:700;margin-right:2px}
+.route-bar .chip button{border:none;padding:1px 6px;border-radius:99px;color:var(--muted);background:transparent}
+.route-bar .chip button:hover{background:#eef1f5;color:var(--ink)}
+.route{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;row-gap:18px;padding:6px 2px 4px}
+.rcard{width:250px;border:1px solid #d9dee6;border-radius:12px;background:#fff;padding:10px 12px 12px;box-shadow:0 1px 2px rgba(20,30,50,.04);display:flex;flex-direction:column}
+.rcard.last{border-color:#8fb3dd;box-shadow:0 0 0 2px #e3edf9}
+.rcard .stage{font-weight:700;font-size:14px;outline:none;border-radius:4px;padding:0 2px}
+.rcard .stage:focus,.rarrow .note:focus{background:#fff7e6}
+.rcard .rid{font-size:12px;color:var(--muted);margin-bottom:2px}
+.rcard .rsvg{display:flex;justify-content:center;min-height:170px;align-items:center}
+.rcard .rdata{display:grid;grid-template-columns:1fr auto;gap:3px 8px;font-size:12.5px;margin-top:6px}
+.rcard .rdata span:nth-child(odd){color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcard .rdata span:nth-child(even){font-variant-numeric:tabular-nums;font-weight:600;padding:0 6px;border-radius:4px;text-align:right}
+.rarrow{width:128px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 6px}
+.rarrow .note{font-size:12px;line-height:1.45;text-align:center;outline:none;border-radius:4px;padding:2px 3px;white-space:pre-wrap;min-height:1.4em;width:100%}
+.rarrow .line{width:100%;height:14px;position:relative;margin:4px 0}
+.rarrow .line:before{content:"";position:absolute;left:4px;right:12px;top:6px;height:2px;background:#5b7fa8}
+.rarrow .line:after{content:"";position:absolute;right:2px;top:1px;border:6px solid transparent;border-left:11px solid #5b7fa8;border-right:0}
+.rarrow .fold{font-size:11.5px;line-height:1.5;text-align:center}
+.up{color:#1f7a45}.down{color:#b4382b}
+.cards{display:flex;flex-wrap:wrap;gap:18px}
+.ccard{width:360px;border:1px solid #d9dee6;border-radius:14px;background:#fff;padding:14px 16px 16px;box-shadow:0 1px 2px rgba(20,30,50,.04)}
+.chead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ctag{font-size:12px;font-weight:600;color:#24507e;background:#e8f0fa;border-radius:99px;padding:2px 10px;outline:none;min-width:20px}
+.ctag:empty:before,.cnote:empty:before{content:attr(data-ph);color:#a0a6b0;font-weight:400}
+.ctag:empty{background:transparent;border:1px dashed #c9d4e3}
+.cid{font-weight:700;font-size:17px}
+.csvg{display:flex;justify-content:center;margin:4px 0}
+.csec{font-size:12px;font-weight:600;color:var(--muted);margin:8px 0 4px;display:flex;align-items:center;gap:8px}
+.csec:after{content:"";flex:1;height:1px;background:#eef0f3}
+.ccard .rdata{display:grid;grid-template-columns:1fr auto;gap:3px 8px;font-size:12.5px}
+.ccard .rdata span:nth-child(odd){color:var(--muted)}
+.ccard .rdata span:nth-child(even){font-variant-numeric:tabular-nums;font-weight:600;padding:0 6px;border-radius:4px;text-align:right}
+.ccard .rdata span.bad{color:#c8402f}
+.cprop{display:grid;grid-template-columns:1fr 150px;gap:10px;align-items:start}
+.cnote{margin-top:10px;min-height:56px;background:#fafbfc;border:1px solid #eef0f3;border-radius:8px;padding:6px 8px;font-size:12.5px;outline:none;white-space:pre-wrap}
+.cnote:focus,.ctag:focus{border-color:#e0c48a;background:#fffaf0}
+table.cmp th svg{width:128px;height:auto}
+table.cmp th{white-space:normal}
+footer{padding:4px 22px 24px;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Chem<span>va</span></div>
+  <div class="tag">粘贴 SMILES + 数据，一键出 SAR 表、演变路线、对比图，直接进 PPT</div>
+  <div class="badge">🔒 全部在浏览器本地计算，结构不上传</div>
+</header>
+
+<div class="wrap">
+  <aside>
+    <div class="card">
+      <h2><b>1</b>粘贴数据</h2>
+      <textarea id="input" spellcheck="false" placeholder="从 Excel 直接复制粘贴（带表头）&#10;ID	SMILES	IC50 (nM)	...&#10;cmpd-1	COc1cc2ncnc(...)...	12"></textarea>
+      <div class="row">
+        <button class="primary" id="btnRun">生成 SAR 表</button>
+        <button id="btnExample">示例 1：JAK 活性</button>
+        <button id="btnExample2">示例 2：ADME</button>
+        <label class="file btn">打开 CSV<input type="file" id="fileIn" accept=".csv,.tsv,.txt,.smi"></label>
+      </div>
+      <div class="hint">支持 Tab / 逗号分隔，第一行为表头。会自动识别 SMILES 列、ID 列和数值列；数值可带 &gt; &lt; ~ 等符号。</div>
+      <div id="parseMsg"></div>
+    </div>
+
+    <div class="card" id="colsCard" hidden>
+      <h2><b>2</b>列设置</h2>
+      <div id="cols"></div>
+      <div class="hint">“越低越好”用于 IC50/Ki/DC50 等，按对数着色；“越高越好”用于抑制率、Dmax 等。</div>
+    </div>
+
+    <div class="card" id="optsCard" hidden>
+      <h2><b>3</b>表格样式</h2>
+      <div class="opt"><span>表格类型</span>
+        <div class="seg" id="modeSeg">
+          <button data-v="rgroup" class="on">R 基团表</button>
+          <button data-v="structure">完整结构</button>
+        </div>
+      </div>
+      <div class="opt"><span>母核</span>
+        <select id="coreMode"><option value="auto">自动 (MCS)</option><option value="custom">自己指定</option></select>
+      </div>
+      <div class="opt" id="customCoreRow" hidden><span></span>
+        <input type="text" id="customCore" placeholder="母核 SMILES / SMARTS" style="flex:1">
+      </div>
+      <div class="opt"><span>小基团</span>
+        <label><input type="checkbox" id="optText" checked> 用文字（Me、OMe、CF₃…）</label>
+      </div>
+      <div class="opt"><span>变化高亮</span>
+        <label><input type="checkbox" id="optRef"> 以第 1 行为参照，标出变化的 R 基</label>
+      </div>
+      <div class="opt" style="align-items:flex-start"><span>计算性质</span>
+        <div class="chips" id="propChips"></div>
+      </div>
+      <div class="opt"><span>PPT 每页行数</span>
+        <select id="rowsPerSlide"><option value="0">自动</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option><option>12</option></select>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="card">
+      <div class="tabs" id="viewTabs"><button data-v="table" class="on">SAR 表</button><button data-v="route">演变路线</button><button data-v="scatter">散点图</button><button data-v="cards">化合物卡片</button><button data-v="compare">系列对比</button></div>
+      <div class="out-head">
+        <input class="title" id="title" value="SAR 表" aria-label="表格标题">
+        <div class="exports">
+          <button id="btnPptx" disabled>导出 PPT</button>
+          <button id="btnPng" disabled>导出 PNG</button>
+          <button id="btnCsv" disabled>导出 CSV</button>
+          <button id="btnCopy" disabled>复制表格文本</button>
+        </div>
+      </div>
+      <div id="output"><div class="empty" id="status"><span class="loading"></span>正在加载化学引擎（约 7 MB，首次稍慢）…</div></div>
+    </div>
+  </main>
+</div>
+<footer>Chemva MVP · 渲染与 R 基团分解基于 RDKit.js · 问题和建议：<a href="https://github.com/yangsong0626/chemva/issues">github.com/yangsong0626/chemva</a></footer>
+<div class="toast" id="toast"></div>
+
+<script src="vendor/RDKit_minimal.js"></script>
+<script src="vendor/pptxgen.bundle.js"></script>
+<script>
+"use strict";
+let RD = null;
+const $ = id => document.getElementById(id);
+
+/* ---------------- example data (public ChEMBL data) ---------------- */
+const EXAMPLE = `ID	SMILES	JAK1 Ki (nM)	JAK2 Ki (nM)	JAK2/JAK1 selectivity (fold)
+CHEMBL2159198	Cc1nc2cnc3[nH]ccc3c2n1C1CCCCC1	1.3	5	3.8
+CHEMBL2159199	Cc1nc2cnc3[nH]ccc3c2n1C1CCOCC1	18	66	3.7
+CHEMBL2159200	Cc1nc2cnc3[nH]ccc3c2n1[C@H]1CCCOC1	2.8	12	4.3
+CHEMBL2159141	Cc1nc2cnc3[nH]ccc3c2n1C1CCNCC1	10	200	20
+CHEMBL2159204	Cc1nc2cnc3[nH]ccc3c2n1C1CCNCC1(F)F	2	11	5.5
+CHEMBL2159143	Cc1nc2cnc3[nH]ccc3c2n1C1CCN(CCC#N)CC1	0.9	2.1	2.3
+CHEMBL2159142	Cc1nc2cnc3[nH]ccc3c2n1C1CCN(Cc2ccccc2)CC1	1.3	2.9	2.2
+CHEMBL2159209	Cc1nc2cnc3[nH]ccc3c2n1[C@H]1CC[C@H](O)CC1	5.8	24	4.1
+CHEMBL2159213	Cc1nc2cnc3[nH]ccc3c2n1[C@@H]1CCCC[C@H]1O	90	520	5.8
+CHEMBL2159206	Cc1nc2cnc3[nH]ccc3c2n1[C@H]1CC[C@H](NS(C)(=O)=O)CC1	4.5	11	2.4
+CHEMBL2386637	OCc1nc2cnc3[nH]ccc3c2n1C1CCCCC1	1.1	8.3	7.5
+CHEMBL2386638	OCCc1nc2cnc3[nH]ccc3c2n1C1CCCCC1	3.5	18	5.1
+CHEMBL2386639	C[C@H](O)c1nc2cnc3[nH]ccc3c2n1C1CCCCC1	10	90	9.0
+CHEMBL2386640	C[C@@H](O)c1nc2cnc3[nH]ccc3c2n1C1CCCCC1	0.8	21	26
+CHEMBL2386642	CC[C@H](O)c1nc2cnc3[nH]ccc3c2n1C1CCCCC1	16	170	11
+CHEMBL2386643	CC[C@@H](O)c1nc2cnc3[nH]ccc3c2n1C1CCCCC1	1.8	44	24
+CHEMBL2386641	CC(C)(O)c1nc2cnc3[nH]ccc3c2n1C1CCCCC1	13	76	5.8`;
+const EXAMPLE2 = `ID	SMILES	HLM CLint (mL/min/kg)	RLM CLint (mL/min/kg)	MDR1-MDCK efflux ratio	Solubility pH6.8 (µg/mL)	hPPB fu (% unbound)	rPPB fu (% unbound)
+Mol56	CC(=O)Nc1ccc(C(=O)N2CCCCC2c2nc(N)ncc2-c2ccc(Cl)cc2)cc1	41	640	106	58	4	3.5
+Mol57	CC(=O)Nc1ccc(C(=O)N2CCCCC2c2nc(N)ncc2-c2cccc(Cl)c2)cc1	53	650	98	58	3.3	3.8
+Mol41	Nc1ncc(-c2cccc(C(F)(F)F)c2)c(C2CCCCN2C(=O)c2ccccc2)n1	380	1510	1.9	25	0.9	1.4
+Mol77	Cc1ncsc1C(=O)N1CCCCC1c1nc(N)ncc1-c1cccc(C(F)(F)F)c1	370	580	9.2	14	4.1	7.3
+Mol66	Cc1ncsc1C(=O)N1CCCCC1c1nc(N(C)C)ncc1-c1cccc(Cl)c1	240	1200	1.3	18	0.83	1.1`;
+const EXAMPLE2_TITLE = '氨基嘧啶-哌啶酰胺：ADME 对比（Biogen 公开数据）';
+const EXAMPLE2_SOURCE = '数据来源：Biogen 公开 ADME 数据集（Fang et al., J Chem Inf Model 2023, 63, 3263；GitHub: molecularinformatics/Computational-ADME，MIT 许可）。原始数据为 log 值，此处换算为线性值。CLint 为按体重换算的微粒体清除（mL/min/kg）。';
+const EXAMPLE_TITLE = 'JAK1 选择性：咪唑并吡咯并吡啶系列（公开数据）';
+const EXAMPLE_SOURCE = '数据来源：ChEMBL 公开数据（JAK1 Ki = CHEMBL2835，JAK2 Ki = CHEMBL2971，取自 MoleculeACE 整理版，MIT 许可）。系列出处：Genentech，Zak et al., J Med Chem 2012, 55, 6176；2013, 56, 4764。选择性倍数 = JAK2 Ki / JAK1 Ki。';
+
+/* ---------------- small-group text labels ---------------- */
+const SMALL_GROUPS = [
+ ['*C','Me'],['*CC','Et'],['*CCC','nPr'],['*C(C)C','iPr'],['*C(C)(C)C','tBu'],['*C1CC1','cPr'],
+ ['*F','F'],['*Cl','Cl'],['*Br','Br'],['*I','I'],['*O','OH'],['*OC','OMe'],['*OCC','OEt'],['*OC(C)C','OiPr'],
+ ['*C#N','CN'],['*C(F)(F)F','CF₃'],['*OC(F)(F)F','OCF₃'],['*C(F)F','CHF₂'],['*OC(F)F','OCHF₂'],
+ ['*N','NH₂'],['*NC','NHMe'],['*N(C)C','NMe₂'],['*[N+](=O)[O-]','NO₂'],['*C(=O)O','CO₂H'],['*C(=O)OC','CO₂Me'],
+ ['*C(N)=O','CONH₂'],['*C(=O)NC','CONHMe'],['*S(C)(=O)=O','SO₂Me'],['*S(N)(=O)=O','SO₂NH₂'],['*SC','SMe'],
+ ['*C#C','C≡CH'],['*C=C','vinyl'],['*C(C)=O','Ac'],['*NC(C)=O','NHAc'],['*CO','CH₂OH'],['*C=O','CHO'],['*CCO','CH₂CH₂OH'],['*=O','=O']
+];
+let smallMap = {};
+
+/* ---------------- state ---------------- */
+const S = {
+  view: 'table', route: {ids: [], labels: {}, notes: {}},
+  sourceNote: '',
+  headers: [], rows: [], cols: [],      // cols: {idx,name,role:'smiles'|'id'|'data'|'ignore',dir:'low'|'high'|'none'}
+  mode: 'rgroup', sort: {key:null, dir:1},
+  result: null,                          // computed table model
+};
+const PROPS = [
+  {k:'MW', label:'MW', get:d=>d.amw, fmt:v=>v.toFixed(1)},
+  {k:'cLogP', label:'cLogP', get:d=>d.CrippenClogP, fmt:v=>v.toFixed(2)},
+  {k:'TPSA', label:'TPSA', get:d=>d.tpsa, fmt:v=>v.toFixed(0)},
+  {k:'HBD', label:'HBD', get:d=>d.NumHBD, fmt:v=>String(v)},
+  {k:'HBA', label:'HBA', get:d=>d.NumHBA, fmt:v=>String(v)},
+  {k:'RotB', label:'RotB', get:d=>d.NumRotatableBonds, fmt:v=>String(v)},
+  {k:'HA', label:'HAC', get:d=>d.NumHeavyAtoms, fmt:v=>String(v)},
+];
+const propOn = {MW:true, cLogP:true, TPSA:false, HBD:false, HBA:false, RotB:false, HA:false};
+
+/* ---------------- boot ---------------- */
+initRDKitModule({locateFile: f => 'vendor/' + f}).then(mod => {
+  RD = mod;
+  try { RD.prefer_coordgen(true); } catch(e){}
+  SMALL_GROUPS.forEach(([s,l]) => { const m = RD.get_mol(s); if (m) { smallMap[m.get_smiles()] = l; m.delete(); } });
+  $('status').innerHTML = '在左边粘贴数据，或点 <b>示例 1 / 示例 2</b> 看看效果。';
+  buildPropChips();
+}).catch(err => {
+  $('status').innerHTML = '化学引擎加载失败：' + esc(String(err)) + '<br>请刷新页面重试。';
+});
+
+function buildPropChips(){
+  $('propChips').innerHTML = PROPS.map(p => `<label><input type="checkbox" data-k="${p.k}" ${propOn[p.k]?'checked':''}>${p.label}</label>`).join('');
+  $('propChips').querySelectorAll('input').forEach(i => i.onchange = () => { propOn[i.dataset.k] = i.checked; rerender(); });
+}
+
+/* ---------------- parsing ---------------- */
+function splitLine(line, delim){
+  if (delim === '\t') return line.split('\t').map(s => s.trim());
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++){
+    const c = line[i];
+    if (q){ if (c === '"'){ if (line[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === delim){ out.push(cur.trim()); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur.trim()); return out;
+}
+function parseNum(s){
+  if (s == null) return null;
+  const t = String(s).trim().replace(/,/g,'');
+  const m = t.match(/^([<>≤≥~=]{0,2})\s*(-?\d*\.?\d+(?:[eE][-+]?\d+)?)\s*(%|nM|µM|uM)?$/);
+  if (!m) return null;
+  return {q: m[1] || '', v: parseFloat(m[2])};
+}
+function looksSmiles(s){
+  if (!s || s.length < 2 || /^\s*[-+]?\d*\.?\d+\s*$/.test(s) || /\s/.test(s.trim())) return false;
+  const m = RD.get_mol(s);
+  if (!m) return false;
+  const ok = m.get_num_atoms() >= 3; m.delete(); return ok;
+}
+function parseInput(text){
+  const lines = text.replace(/\r/g,'').split('\n').filter(l => l.trim());
+  if (!lines.length) return 'empty';
+  const delim = lines.some(l => l.includes('\t')) ? '\t' : (lines.some(l => l.includes(',')) ? ',' : (lines[0].includes(';') ? ';' : ' '));
+  let rows = lines.map(l => delim === ' ' ? l.trim().split(/\s+/) : splitLine(l, delim));
+  const ncol = Math.max(...rows.map(r => r.length));
+  rows = rows.map(r => { while (r.length < ncol) r.push(''); return r; });
+  // header detection: if any cell of the first row parses as a molecule, there's no header
+  let headers;
+  const firstHasSmiles = rows[0].some(c => looksSmiles(c));
+  if (firstHasSmiles){ headers = rows[0].map((_, i) => 'col' + (i+1)); }
+  else { headers = rows.shift(); }
+  if (!rows.length) return 'empty';
+  // column roles
+  const sample = rows.slice(0, 40);
+  const smiFrac = headers.map((_, j) => sample.filter(r => looksSmiles(r[j])).length / sample.length);
+  const numFrac = headers.map((_, j) => sample.filter(r => r[j] === '' || parseNum(r[j])).length / sample.length);
+  let smiIdx = smiFrac.indexOf(Math.max(...smiFrac));
+  const hdrSmi = headers.findIndex(h => /smiles/i.test(h));
+  if (hdrSmi >= 0 && smiFrac[hdrSmi] > 0.3) smiIdx = hdrSmi;
+  if (smiFrac[smiIdx] < 0.3) return 'nosmiles';
+  const cols = headers.map((h, j) => {
+    let role = 'ignore';
+    if (j === smiIdx) role = 'smiles';
+    else if (numFrac[j] >= 0.6 && rows.some(r => parseNum(r[j]))) role = 'data';
+    return {idx: j, name: h || ('col' + (j+1)), role, dir: guessDir(h)};
+  });
+  const idc = cols.find(c => c.role === 'ignore' && /^(id|name|cmpd|compound|编号|名称)/i.test(c.name)) || cols.find(c => c.role === 'ignore');
+  if (idc) idc.role = 'id';
+  S.headers = headers; S.rows = rows; S.cols = cols;
+  return 'ok';
+}
+function guessDir(h){
+  h = (h || '').toLowerCase();
+  if (/(selectiv|选择性|fold|倍|unbound|\bfu\b)/.test(h)) return 'high';
+  if (/(efflux|\ber\b|b-a\/a-b|clint)/.test(h)) return 'low';
+  if (/(ic50|ec50|dc50|gi50|ki\b|kd\b|ki |kd |\bki|\bkd|cl_?int|clearance|herg|potency|nm\)|um\)|µm\))/.test(h) && !/(sol|溶解)/.test(h)) return 'low';
+  if (/(%|inh|dmax|sol|溶解|perm|papp|auc|f\b|bioavail|pic50|pki|pec50|efficacy|tm)/.test(h)) return 'high';
+  return 'none';
+}
+
+/* ---------------- UI wiring ---------------- */
+$('btnExample').onclick = () => { $('input').value = EXAMPLE; $('title').value = EXAMPLE_TITLE; run(); };
+$('btnExample2').onclick = () => { $('input').value = EXAMPLE2; $('title').value = EXAMPLE2_TITLE; run(); };
+$('btnRun').onclick = run;
+$('fileIn').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader(); r.onload = () => { $('input').value = r.result; run(); }; r.readAsText(f);
+};
+$('modeSeg').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('modeSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  S.mode = b.dataset.v; compute();
+});
+$('coreMode').onchange = () => { $('customCoreRow').hidden = $('coreMode').value !== 'custom'; if ($('coreMode').value === 'auto') compute(); };
+$('customCore').onchange = compute;
+$('optText').onchange = compute;
+$('optRef').onchange = rerender;
+$('rowsPerSlide').onchange = () => {};
+
+function run(){
+  if (!RD) return toast('化学引擎还在加载，请稍候');
+  const res = parseInput($('input').value);
+  $('parseMsg').innerHTML = '';
+  if (res === 'empty') return msg('parseMsg', 'warn', '没有读到数据。');
+  if (res === 'nosmiles') return msg('parseMsg', 'warn', '没找到 SMILES 列。请确认有一列是 SMILES。');
+  S.sort = {key:null, dir:1};
+  if (S.cards) S.cards.init = false;
+  if (S.cmp) S.cmp.init = false;
+  S.route = {ids: [], labels: {}, notes: {}};
+  const isEx = $('input').value.trim() === EXAMPLE.trim(), isEx2 = $('input').value.trim() === EXAMPLE2.trim();
+  if (!isEx && $('title').value === EXAMPLE_TITLE) $('title').value = 'SAR 表';
+  if (!isEx2 && $('title').value === EXAMPLE2_TITLE) $('title').value = 'SAR 表';
+  S.sourceNote = isEx ? EXAMPLE_SOURCE : isEx2 ? EXAMPLE2_SOURCE : '';
+  renderCols();
+  $('colsCard').hidden = false; $('optsCard').hidden = false;
+  compute();
+}
+function renderCols(){
+  $('cols').innerHTML = S.cols.map(c => `
+    <div class="colrole">
+      <div class="nm" title="${esc(c.name)}">${esc(c.name)}</div>
+      <select data-i="${c.idx}" data-f="role">
+        ${[['smiles','SMILES'],['id','ID'],['data','数据'],['ignore','忽略']].map(([v,l]) => `<option value="${v}" ${c.role===v?'selected':''}>${l}</option>`).join('')}
+      </select>
+      <select data-i="${c.idx}" data-f="dir" ${c.role!=='data'?'disabled':''}>
+        ${[['low','越低越好'],['high','越高越好'],['none','不着色']].map(([v,l]) => `<option value="${v}" ${c.dir===v?'selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>`).join('');
+  $('cols').querySelectorAll('select').forEach(sel => sel.onchange = () => {
+    const c = S.cols[+sel.dataset.i];
+    if (sel.dataset.f === 'role'){
+      if (sel.value === 'smiles') S.cols.forEach(o => { if (o.role === 'smiles') o.role = 'ignore'; });
+      if (sel.value === 'id') S.cols.forEach(o => { if (o.role === 'id') o.role = 'ignore'; });
+      c.role = sel.value; renderCols();
+      if (sel.value === 'smiles' || c.role === 'ignore' || true) compute();
+    } else { c.dir = sel.value; rerender(); }
+  });
+}
+
+/* ---------------- chemistry ---------------- */
+function freeAll(list){ list.forEach(m => { try { m && m.delete(); } catch(e){} }); }
+function stripMaps(smi){ return smi.replace(/\[\*:\d+\]/g, '[*]'); }
+function canonDummy(smi){
+  const m = RD.get_mol(stripMaps(smi)); if (!m) return smi;
+  const c = m.get_smiles(); m.delete(); return c;
+}
+function isH(smi){ return /^\[H\]\[\*:\d+\]$|^\[\*:\d+\]\[H\]$/.test(smi); }
+
+function compute(){
+  if (!RD || !S.rows.length) return;
+  const smiCol = S.cols.find(c => c.role === 'smiles');
+  if (!smiCol) { return out(`<div class="empty">请在“列设置”里选一列作为 SMILES。</div>`); }
+  out(`<div class="empty"><span class="loading"></span>正在找母核、拆 R 基团…</div>`);
+  setTimeout(() => {
+    try { doCompute(smiCol); } catch(e){ console.error(e); out(`<div class="empty">计算出错：${esc(String(e))}</div>`); }
+  }, 30);
+}
+
+function doCompute(smiCol){
+  const idCol = S.cols.find(c => c.role === 'id');
+  const t0 = performance.now();
+  const recs = S.rows.map((r, i) => {
+    const smi = r[smiCol.idx];
+    const mol = smi ? RD.get_mol(smi) : null;
+    let desc = null;
+    if (mol) { try { desc = JSON.parse(mol.get_descriptors()); } catch(e){} }
+    return {i, raw: r, id: idCol ? r[idCol.idx] : String(i+1), smi, mol, desc, R: {}, matched: false};
+  });
+  const valid = recs.filter(r => r.mol);
+  const bad = recs.filter(r => !r.mol);
+  const notes = [];
+  if (bad.length) notes.push(['warn', `${bad.length} 行 SMILES 解析失败（${bad.slice(0,5).map(b => esc(b.id)).join('、')}${bad.length>5?'…':''}），已跳过。`]);
+
+  // ---- core
+  let coreQ = null, coreSmarts = '', coreInfo = '';
+  if ($('coreMode').value === 'custom' && $('customCore').value.trim()){
+    coreSmarts = $('customCore').value.trim();
+    coreQ = RD.get_qmol(coreSmarts) || RD.get_mol(coreSmarts);
+    if (!coreQ) notes.push(['warn', '指定的母核无法解析，改用自动识别。']);
+    else coreInfo = '使用你指定的母核';
+  }
+  if (!coreQ && valid.length >= 2){
+    const ml = new RD.MolList(); valid.forEach(r => ml.append(r.mol));
+    const params = JSON.stringify({RingMatchesRingOnly: true, CompleteRingsOnly: true, Threshold: valid.length > 4 ? 0.8 : 1.0, Timeout: 6});
+    try {
+      const js = JSON.parse(RD.get_mcs_as_json(ml, params));
+      if (js.numAtoms >= 5){
+        coreSmarts = js.smarts; coreQ = RD.get_qmol(coreSmarts);
+        // trim acyclic side-chain atoms so that e.g. OMe stays an R group, not part of the core
+        const pruned = pruneCore(coreQ, valid);
+        if (pruned){ const q2 = RD.get_qmol(pruned.smarts); if (q2){ coreQ.delete(); coreQ = q2; coreSmarts = pruned.smarts; } }
+        coreInfo = `自动识别（MCS，环系 + 连接基，${pruned ? pruned.n : js.numAtoms} 个原子${js.canceled ? '，已超时取近似' : ''}）`;
+      }
+    } catch(e){ console.warn(e); }
+    try { ml.delete(); } catch(e){}
+  }
+  if (!coreQ && valid.length === 1){ coreSmarts = valid[0].smi; coreQ = RD.get_qmol(valid[0].mol.get_smarts()); }
+
+  // ---- template for alignment
+  let template = null;
+  let model = {recs, valid, notes, coreSmarts, coreInfo, mode: S.mode, rLabels: [], coreSvg: '', constNotes: []};
+
+  if (coreQ && S.mode === 'rgroup'){
+    const rgd = RD.get_rgd(coreQ, JSON.stringify({removeHydrogensPostMatch: true}));
+    const added = [];
+    valid.forEach(r => { const k = rgd.add(r.mol); if (k >= 0) added.push(r); });
+    let rows = [];
+    if (added.length && rgd.process()) rows = rgd.get_rgroups_as_rows();
+    let coreSmi = '';
+    rows.forEach((row, n) => {
+      const rec = added[n]; if (!rec) return;
+      rec.matched = true;
+      Object.keys(row).forEach(k => {
+        const s = row[k].get_smiles();
+        if (k === 'Core'){ if (!coreSmi || (s.match(/\*/g)||[]).length > (coreSmi.match(/\*/g)||[]).length) coreSmi = s; }
+        else rec.R[k] = s;
+        try { row[k].delete(); } catch(e){}
+      });
+    });
+    try { rgd.delete(); } catch(e){}
+    const matched = recs.filter(r => r.matched);
+    const unmatched = valid.filter(r => !r.matched);
+    if (unmatched.length) notes.push(['warn', `${unmatched.length} 个化合物不含这个母核（${unmatched.slice(0,5).map(u => esc(u.id)).join('、')}${unmatched.length>5?'…':''}），放在表格底部，显示完整结构。`]);
+
+    // R labels: drop columns that are constant, fold them into the core
+    let labels = [...new Set(matched.flatMap(r => Object.keys(r.R)))].sort((a,b) => +a.slice(1) - +b.slice(1));
+    const constant = labels.filter(L => { const vals = new Set(matched.map(r => canonDummy(r.R[L] || '[H][*]'))); return vals.size === 1 && matched.length > 1; });
+    let coreMol = coreSmi ? RD.get_mol(coreSmi) : null;
+    constant.forEach(L => {
+      const g = matched[0].R[L];
+      if (!coreMol || !g) return;
+      try {
+        const gm = RD.get_mol(g);
+        const z = RD.molzip(coreMol, gm, JSON.stringify({}));
+        if (z){ coreMol.delete(); coreMol = z; }
+        gm.delete();
+        model.constNotes.push(`${L} = ${labelFor(g) || stripMaps(g)}（全部相同，已并入母核）`);
+      } catch(e){ console.warn('molzip', e); }
+    });
+    if (coreMol){ try { coreMol.remove_hs_in_place(); } catch(e){} }
+    labels = labels.filter(L => !constant.includes(L));
+    // renumber
+    const renum = {}; labels.forEach((L, k) => renum[L] = 'R' + (k+1));
+    matched.forEach(r => { const nr = {}; labels.forEach(L => nr[renum[L]] = r.R[L] || null); r.R = nr; });
+    model.rLabels = labels.map(L => renum[L]);
+    if (coreMol){
+      let cs = coreMol.get_smiles();
+      coreMol.delete();
+      cs = cs.replace(/\[\*:(\d+)\]/g, (m, n) => { const nl = renum['R' + n]; return nl ? `[${nl.slice(1)}*]` : '[H]'; });
+      model.coreSvg = drawCore(cs, 300, 210);
+      model.coreSmilesShown = cs;
+      template = makeTemplate(cs);
+      model.templateSmi = cs.replace(/\[\d+\*\]/g, '[H]');
+    }
+    model.matched = matched; model.unmatched = unmatched;
+    if (!model.rLabels.length && matched.length) notes.push(['info', '所有化合物的取代基都相同，切到“完整结构”看看。']);
+  } else {
+    if (coreQ){
+      const m = RD.get_mol(coreSmarts);
+      if (m){ template = m; try { template.set_new_coords(true); } catch(e){} }
+      model.coreSvg = template ? drawPlain(template, 300, 210) : '';
+      model.templateSmi = template ? template.get_smiles() : null;
+    } else if (valid.length > 1) notes.push(['warn', '这组化合物没有足够大的共同母核，按完整结构展示。']);
+    model.matched = []; model.unmatched = valid;
+    if (S.mode === 'rgroup' && !coreQ) model.mode = 'structure';
+  }
+
+  // structure images for full-structure cells
+  const fullRecs = model.mode === 'structure' ? valid : model.unmatched;
+  fullRecs.forEach(r => {
+    if (template){ try { r.mol.generate_aligned_coords(template, JSON.stringify({useCoordGen: true, allowRGroups: true, acceptFailure: true})); } catch(e){} }
+    let hl = null;
+    if (coreQ){ try { hl = JSON.parse(r.mol.get_substruct_match(coreQ)); } catch(e){} }
+    r.fullSvg = drawFull(r.mol, 230, 150, hl);
+  });
+  // R-group images
+  const useText = $('optText').checked;
+  (model.matched || []).forEach(r => {
+    r.Rcell = {};
+    model.rLabels.forEach(L => {
+      const g = r.R[L];
+      if (!g || isH(g)) { r.Rcell[L] = {text: 'H', key: 'H'}; return; }
+      const key = canonDummy(g);
+      const lab = useText ? labelFor(g) : null;
+      r.Rcell[L] = lab ? {text: lab, key} : {svg: drawGroup(g, 130, 78), key, smi: stripMaps(g)};
+    });
+  });
+  if (template && template !== coreQ){ try { template.delete(); } catch(e){} }
+  try { coreQ && coreQ.delete(); } catch(e){}
+  model.ms = Math.round(performance.now() - t0);
+  S.result = model;
+  if (S.route){ const ok = new Set(valid.map(r => r.i)); S.route.ids = S.route.ids.filter(i => ok.has(i)); if (S.route.ids.length < 2) S.route.ids = []; }
+  rerender();
+}
+function labelFor(g){ return smallMap[canonDummy(g)] || null; }
+
+/* Keep ring atoms and linkers between rings; drop acyclic atoms hanging off the MCS. */
+function pruneCore(qmol, recs){
+  let host = null, match = null;
+  for (const r of recs){
+    try { const mt = JSON.parse(r.mol.get_substruct_match(qmol)); if (mt.atoms && mt.atoms.length){ host = r.mol; match = mt.atoms; break; } } catch(e){}
+  }
+  if (!host) return null;
+  const mb = host.get_molblock().split('\n');
+  const na = parseInt(mb[3].substr(0, 3)), nb = parseInt(mb[3].substr(3, 3));
+  const atomLines = mb.slice(4, 4 + na), bondLines = mb.slice(4 + na, 4 + na + nb);
+  const bonds = bondLines.map(l => [parseInt(l.substr(0, 3)) - 1, parseInt(l.substr(3, 3)) - 1, l]);
+  const adj = Array.from({length: na}, () => []);
+  bonds.forEach(([a, b], k) => { adj[a].push([b, k]); adj[b].push([a, k]); });
+  const connectedWithout = (a, b, skip) => {
+    const seen = new Set([a]), st = [a];
+    while (st.length){ const x = st.pop(); if (x === b) return true; for (const [y, k] of adj[x]) if (k !== skip && !seen.has(y)){ seen.add(y); st.push(y); } }
+    return false;
+  };
+  // ring membership judged inside the matched substructure only: a lone atom from a ring
+  // that is not fully in the core must not anchor it (otherwise that ring gets cut open)
+  const inMatch = new Set(match);
+  const inRing = new Array(na).fill(false);
+  bonds.forEach(([a, b], k) => {
+    if (!inMatch.has(a) || !inMatch.has(b)) return;
+    const seen = new Set([a]), st = [a]; let ok = false;
+    while (st.length && !ok){ const x = st.pop(); for (const [y, kk] of adj[x]){ if (kk === k || !inMatch.has(y) || seen.has(y)) continue; if (y === b){ ok = true; break; } seen.add(y); st.push(y); } }
+    if (ok){ inRing[a] = true; inRing[b] = true; }
+  });
+  const keep = new Set(match);
+  let changed = true;
+  while (changed){
+    changed = false;
+    for (const a of [...keep]){
+      if (inRing[a]) continue;
+      const deg = adj[a].filter(([y]) => keep.has(y)).length;
+      if (deg <= 1){ keep.delete(a); changed = true; }
+    }
+  }
+  // put back terminal =O / =S / =N on kept atoms (carbonyl, sulfonyl...) so they stay in the core
+  bonds.forEach(([a, b, l]) => {
+    if (parseInt(l.substr(6, 3)) !== 2) return;
+    [[a, b], [b, a]].forEach(([x, y]) => { if (keep.has(x) && !keep.has(y) && match.includes(y) && adj[y].length === 1) keep.add(y); });
+  });
+  if (keep.size < 5 || keep.size === match.length) return keep.size === match.length ? null : null;
+  const order = [...keep].sort((a, b) => a - b), newIdx = {};
+  order.forEach((a, i) => newIdx[a] = i + 1);
+  const kb = bonds.filter(([a, b]) => keep.has(a) && keep.has(b));
+  const pad = (n) => String(n).padStart(3, ' ');
+  const chg = mb.filter(l => l.startsWith('M  CHG')).flatMap(l => {
+    const p = l.substr(6).trim().split(/\s+/).map(Number).slice(1), out = [];
+    for (let i = 0; i < p.length; i += 2) if (keep.has(p[i] - 1)) out.push([newIdx[p[i] - 1], p[i + 1]]);
+    return out;
+  });
+  const lines = ['', '  Chemva', '', pad(order.length) + pad(kb.length) + '  0  0  0  0  0  0  0  0999 V2000',
+    ...order.map(a => atomLines[a]),
+    ...kb.map(([a, b, l]) => pad(newIdx[a]) + pad(newIdx[b]) + l.substr(6)),
+    ...chg.map(([i, c]) => 'M  CHG  1' + ' ' + pad(i) + ' ' + pad(c)),
+    'M  END'];
+  const m = RD.get_mol(lines.join('\n'));
+  if (!m) return null;
+  let smi = m.get_smiles(); m.delete();
+  // as a query: drop explicit H counts so substituted positions still match
+  const smarts = smi.replace(/(\[[A-Za-z@]+?)H\d?(?=[\]+\-:])/g, '$1');
+  return {smarts, n: keep.size};
+}
+function makeTemplate(coreSmi){
+  const t = coreSmi.replace(/\[\d+\*\]/g, '[H]');
+  const m = RD.get_mol(t); if (!m) return null;
+  try { m.remove_hs_in_place(); m.set_new_coords(true); } catch(e){}
+  return m;
+}
+
+/* ---------------- drawing ---------------- */
+const DRAW_BASE = {bondLineWidth: 1.4, fixedBondLength: 22, padding: 0.06, clearBackground: false, addStereoAnnotation: false, minFontSize: 10, maxFontSize: 16, scaleBondWidth: false};
+function drawCore(smi, w, h){
+  const m = RD.get_mol(smi); if (!m) return '';
+  try { m.set_new_coords(true); m.straighten_depiction(); } catch(e){}
+  const labels = {};
+  try {
+    const j = JSON.parse(m.get_json());
+    j.molecules[0].atoms.forEach((a, i) => { if ((a.z ?? 6) === 0) labels[i] = 'R' + (a.isotope || ''); });
+  } catch(e){}
+  const svg = m.get_svg_with_highlights(JSON.stringify({...DRAW_BASE, width: w, height: h, fixedBondLength: 26, atomLabels: labels}));
+  m.delete(); return svg;
+}
+function drawGroup(g, w, h){
+  const m = RD.get_mol(stripMaps(g)); if (!m) return '';
+  try { m.set_new_coords(true); m.straighten_depiction(); } catch(e){}
+  const svg = m.get_svg_with_highlights(JSON.stringify({...DRAW_BASE, width: w, height: h, fixedBondLength: 18, dummiesAreAttachments: true}));
+  m.delete(); return svg;
+}
+function drawFull(m, w, h, hl){
+  const opt = {...DRAW_BASE, width: w, height: h, fixedBondLength: 20};
+  if (hl && hl.atoms && hl.atoms.length){ opt.atoms = hl.atoms; opt.bonds = hl.bonds || []; opt.highlightColour = [0.78, 0.87, 0.98]; opt.highlightRadius = 0.3; opt.highlightBondWidthMultiplier = 10; }
+  return m.get_svg_with_highlights(JSON.stringify(opt));
+}
+function drawPlain(m, w, h){ return m.get_svg_with_highlights(JSON.stringify({...DRAW_BASE, width: w, height: h, fixedBondLength: 24})); }
+
+/* ---------------- table model (shared by HTML / PNG / PPTX) ---------------- */
+function buildTable(){
+  const R = S.result; if (!R) return null;
+  const dataCols = S.cols.filter(c => c.role === 'data');
+  const props = PROPS.filter(p => propOn[p.k]);
+  const cols = [{key: 'id', label: 'ID', type: 'id'}];
+  if (R.mode === 'rgroup'){
+    R.rLabels.forEach(L => cols.push({key: 'R:' + L, label: L, type: 'r'}));
+    if (R.unmatched.length) cols.push({key: 'full', label: '结构', type: 'full', onlyUnmatched: true});
+  } else cols.push({key: 'full', label: '结构', type: 'full'});
+  dataCols.forEach(c => cols.push({key: 'd:' + c.idx, label: c.name, type: 'data', col: c}));
+  props.forEach(p => cols.push({key: 'p:' + p.k, label: p.label, type: 'prop', prop: p}));
+
+  // color scales
+  dataCols.forEach(c => {
+    if (c.dir === 'none') return;
+    const vals = R.valid.map(r => parseNum(r.raw[c.idx])).filter(Boolean).map(x => x.v);
+    if (vals.length < 2) return;
+    const pos = vals.every(v => v > 0);
+    const useLog = pos && (c.dir === 'low' || Math.max(...vals) / Math.min(...vals) >= 20);
+    const tr = v => useLog ? Math.log10(v) : v;
+    c._min = Math.min(...vals.map(tr)); c._max = Math.max(...vals.map(tr)); c._tr = tr;
+  });
+
+  let rows = R.mode === 'rgroup' ? [...R.matched, ...R.unmatched] : [...R.valid];
+  if (S.sort.key){
+    const k = S.sort.key, dir = S.sort.dir;
+    const val = r => {
+      if (k === 'id') return r.id;
+      if (k.startsWith('d:')){ const p = parseNum(r.raw[+k.slice(2)]); return p ? p.v : null; }
+      if (k.startsWith('p:')){ const p = PROPS.find(x => x.k === k.slice(2)); return r.desc ? p.get(r.desc) : null; }
+      if (k.startsWith('R:')){ const c = r.Rcell && r.Rcell[k.slice(2)]; return c ? (c.text || c.smi || '') : null; }
+      return null;
+    };
+    rows.sort((a, b) => {
+      const va = val(a), vb = val(b);
+      if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1;
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), undefined, {numeric: true}) * dir;
+    });
+  }
+  const ref = $('optRef').checked && R.mode === 'rgroup' && rows.length ? rows.find(r => r.matched) : null;
+  const hasRimg = R.mode === 'rgroup' && rows.some(r => r.Rcell && Object.values(r.Rcell).some(c => c.svg));
+  const showsFull = r => R.mode === 'structure' || !r.matched;
+  const rowHasImg = r => r.Rcell && Object.values(r.Rcell).some(c => c.svg);
+  const rowHs = rows.map(r => showsFull(r) ? 116 : (rowHasImg(r) ? 74 : 38));
+  cols.forEach(c => {
+    c.w = c.type === 'id' ? Math.max(84, Math.min(170, Math.max(...rows.map(r => String(r.id).length)) * 8 + 18)) : c.type === 'r' ? (rows.some(r => r.Rcell && r.Rcell[c.label] && r.Rcell[c.label].svg) ? 120 : 76)
+        : c.type === 'full' ? 200 : c.type === 'data' ? Math.max(86, Math.min(130, c.label.length * 7.5)) : 62;
+  });
+  const cells = rows.map(r => cols.map(c => {
+    if (c.type === 'id') return {text: r.id, bold: true};
+    if (c.type === 'r'){
+      if (!r.matched) return {text: ''};
+      const cell = r.Rcell[c.label] || {text: '—'};
+      const changed = ref && r !== ref && ref.Rcell[c.label] && cell.key !== ref.Rcell[c.label].key;
+      return {...cell, changed};
+    }
+    if (c.type === 'full') return (c.onlyUnmatched && r.matched) ? {text: ''} : {svg: r.fullSvg};
+    if (c.type === 'data'){
+      const s = r.raw[c.col.idx] || ''; const p = parseNum(s);
+      let bg = null;
+      if (p && c.col._min !== undefined && c.col._max > c.col._min){
+        let t = (c.col._tr(p.v) - c.col._min) / (c.col._max - c.col._min);
+        t = Math.max(0, Math.min(1, t));
+        bg = heat(c.col.dir === 'low' ? t : 1 - t);
+      }
+      return {text: s, bg, num: true};
+    }
+    if (c.type === 'prop'){ const v = r.desc ? c.prop.get(r.desc) : null; return {text: v == null ? '' : c.prop.fmt(v), num: true}; }
+  }));
+  return {cols, rows, cells, rowHs, ref};
+}
+// t=0 good(green) .. 1 bad(red)
+function heat(t){
+  const a = [159,216,179], b = [255,241,168], c = [244,178,166];
+  const mix = (x, y, u) => x.map((v, i) => Math.round(v + (y[i] - v) * u));
+  const rgb = t < .5 ? mix(a, b, t * 2) : mix(b, c, (t - .5) * 2);
+  return '#' + rgb.map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+/* ---------------- HTML render ---------------- */
+function rerender(){
+  const R = S.result; if (!R) return;
+  if (S.view === 'route') return renderRoute();
+  const T = buildTable();
+  let html = '';
+  R.notes.forEach(([k, t]) => html += `<div class="msg ${k}">${t}</div>`);
+  if (R.coreSvg){
+    html += `<div class="corebox" style="margin-top:${R.notes.length?10:0}px"><div class="coresvg">${R.coreSvg}</div><div class="meta">
+      <div><b style="color:var(--ink)">母核</b> · ${esc(R.coreInfo || '')}</div>
+      ${R.constNotes.map(n => `<div>${esc(n)}</div>`).join('')}
+      <div style="margin-top:6px">${T.rows.length} 个化合物 · ${R.ms} ms</div>
+      <div style="margin-top:6px">点表头可排序。觉得母核不对，可以在左边“母核”里改成自己指定。</div>
+    </div></div>`;
+  }
+  html += `<div class="tablewrap"><table class="sar"><thead><tr>`;
+  T.cols.forEach(c => {
+    const arrow = S.sort.key === c.key ? `<span class="arrow">${S.sort.dir > 0 ? '▲' : '▼'}</span>` : '';
+    html += `<th data-k="${esc(c.key)}" style="min-width:${c.w}px">${esc(c.label)}${arrow}</th>`;
+  });
+  html += `</tr></thead><tbody>`;
+  T.rows.forEach((r, i) => {
+    html += `<tr class="${T.ref === r ? 'ref' : ''}" style="height:${T.rowHs[i]}px">`;
+    T.cells[i].forEach((cell, j) => {
+      const c = T.cols[j];
+      const cls = [c.type === 'id' ? 'id' : '', cell.num ? 'num' : '', cell.text && c.type === 'r' ? 'rtext' : '', cell.changed ? 'changed' : ''].join(' ');
+      const style = cell.bg ? `background:${cell.bg}` : '';
+      html += `<td class="${cls}" style="${style}" ${cell.smi ? `title="${esc(cell.smi)}"` : ''}>${cell.svg ? cell.svg : esc(cell.text || '')}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table></div>`;
+  const colored = S.cols.filter(c => c.role === 'data' && c.dir !== 'none');
+  html += `<div class="legend">${colored.length ? '<i></i> 绿 = 更好，红 = 更差（越低越好的列按对数着色）' : ''}${T.ref ? ' · <span style="box-shadow:inset 3px 0 0 #e08a00;padding:0 6px">橙色竖线</span> = 相对第 1 行变化的 R 基' : ''}</div>`;
+  if (S.sourceNote) html += `<div class="legend" style="margin-top:4px">${esc(S.sourceNote)}</div>`;
+  out(html);
+  document.querySelectorAll('table.sar th').forEach(th => th.onclick = () => {
+    const k = th.dataset.k;
+    if (S.sort.key === k) S.sort.dir *= -1; else S.sort = {key: k, dir: 1};
+    rerender();
+  });
+  ['btnPptx','btnPng','btnCsv','btnCopy'].forEach(id => $(id).disabled = false);
+}
+
+/* ---------------- raster helpers ---------------- */
+function svgToImage(svg){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img); img.onerror = rej;
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+async function svgToPng(svg, w, h, scale = 3){
+  const img = await svgToImage(svg);
+  const cv = document.createElement('canvas'); cv.width = w * scale; cv.height = h * scale;
+  const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  return cv.toDataURL('image/png');
+}
+function svgSize(svg){
+  const m = svg.match(/width='(\d+(?:\.\d+)?)px'\s+height='(\d+(?:\.\d+)?)px'/) || svg.match(/width="(\d+)[^"]*"\s+height="(\d+)/);
+  return m ? [+m[1], +m[2]] : [200, 140];
+}
+
+/* ---------------- PNG export ---------------- */
+async function exportPng(){
+  const T = buildTable(), R = S.result;
+  const sc = 2, pad = 24, headH = 34;
+  const tableW = T.cols.reduce((a, c) => a + c.w, 0);
+  const title = $('title').value.trim();
+  const titleH = title ? 40 : 0;
+  const coreH = R.coreSvg ? 220 : 0;
+  const W = Math.max(tableW, 320) + pad * 2;
+  const noteH = S.sourceNote ? 30 : 0;
+  const H = pad + titleH + coreH + headH + T.rowHs.reduce((a, b) => a + b, 0) + noteH + pad;
+  const cv = document.createElement('canvas'); cv.width = W * sc; cv.height = H * sc;
+  const ctx = cv.getContext('2d'); ctx.scale(sc, sc);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const FONT = '-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif';
+  let y = pad;
+  if (title){ ctx.fillStyle = '#1d2430'; ctx.font = `600 18px ${FONT}`; ctx.textBaseline = 'middle'; ctx.fillText(title, pad, y + 14); y += titleH; }
+  if (R.coreSvg){ const [cw, ch] = svgSize(R.coreSvg); const img = await svgToImage(R.coreSvg); ctx.drawImage(img, pad, y, cw, ch); y += coreH; }
+  // header
+  let x = pad;
+  ctx.fillStyle = '#f3f5f8'; ctx.fillRect(pad, y, tableW, headH);
+  ctx.font = `600 12.5px ${FONT}`; ctx.fillStyle = '#1d2430'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  T.cols.forEach(c => { ctx.fillText(c.label, x + c.w / 2, y + headH / 2, c.w - 6); x += c.w; });
+  y += headH;
+  for (let i = 0; i < T.rows.length; i++){
+    x = pad; const rh = T.rowHs[i];
+    for (let j = 0; j < T.cols.length; j++){
+      const c = T.cols[j], cell = T.cells[i][j];
+      if (cell.bg){ ctx.fillStyle = cell.bg; ctx.fillRect(x, y, c.w, rh); }
+      if (cell.changed){ ctx.fillStyle = '#e08a00'; ctx.fillRect(x, y, 3, rh); }
+      if (cell.svg){
+        const [sw, sh] = svgSize(cell.svg); const img = await svgToImage(cell.svg);
+        const k = Math.min(1, (c.w - 6) / sw, (rh - 6) / sh);
+        ctx.drawImage(img, x + (c.w - sw * k) / 2, y + (rh - sh * k) / 2, sw * k, sh * k);
+      } else if (cell.text){
+        ctx.fillStyle = '#1d2430';
+        ctx.font = `${cell.bold ? '600 ' : ''}${c.type === 'r' ? 14 : 13}px ${FONT}`;
+        ctx.fillText(cell.text, x + c.w / 2, y + rh / 2, c.w - 6);
+      }
+      x += c.w;
+    }
+    ctx.strokeStyle = '#e6e8ec'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad, y + rh + .5); ctx.lineTo(pad + tableW, y + rh + .5); ctx.stroke();
+    y += rh;
+  }
+  if (S.sourceNote){ ctx.textAlign = 'left'; ctx.fillStyle = '#6b7380'; ctx.font = `11px ${FONT}`; ctx.fillText(S.sourceNote, pad, y + 18, W - 2 * pad); }
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  await saveFile(fname('png'), blob);
+}
+
+/* ---------------- PPTX export ---------------- */
+async function exportPptx(){
+  const T = buildTable(), R = S.result;
+  const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE'; // 13.33 x 7.5 in
+  const SW = 13.33, SH = 7.5, M = 0.4;
+  const title = $('title').value.trim() || 'SAR 表';
+  const PX = 96;
+  const tableWpx = T.cols.reduce((a, c) => a + c.w, 0);
+  const coreW = R.coreSvg ? 2.9 : 0;
+  const availW = SW - 2 * M - (coreW ? coreW + 0.3 : 0);
+  const k = Math.min(1.0, availW / (tableWpx / PX));
+  const colW = T.cols.map(c => c.w / PX * k);
+  const headH = 0.38;
+  const rowHin = T.rowHs.map(h => Math.max(0.34, h / PX * k * (h > 40 ? 0.78 : 1)));
+  const top = 1.05, availH = SH - top - 0.35;
+  // paginate by cumulative height (and optional fixed rows per slide)
+  const maxPer = +$('rowsPerSlide').value || Infinity;
+  const pagesIdx = []; let cur = [], used = headH;
+  rowHin.forEach((h, i) => {
+    if (cur.length && (used + h > availH || cur.length >= maxPer)){ pagesIdx.push(cur); cur = []; used = headH; }
+    cur.push(i); used += h;
+  });
+  if (cur.length) pagesIdx.push(cur);
+  const tableX = M + (coreW ? coreW + 0.3 : 0);
+  const pngCache = new Map();
+  const toPng = async (svg) => { if (!pngCache.has(svg)){ const [w, h] = svgSize(svg); pngCache.set(svg, {data: await svgToPng(svg, w, h, 3), w, h}); } return pngCache.get(svg); };
+  const corePng = R.coreSvg ? await toPng(R.coreSvg) : null;
+  const pages = pagesIdx.length;
+  for (let pg = 0; pg < pages; pg++){
+    const slide = pptx.addSlide();
+    slide.addText(title + (pages > 1 ? `  (${pg + 1}/${pages})` : ''), {x: M, y: 0.3, w: SW - 2 * M, h: 0.55, fontSize: 22, bold: true, color: '1D2430', fontFace: 'Arial'});
+    if (corePng){
+      const ch = coreW * corePng.h / corePng.w;
+      slide.addImage({data: corePng.data, x: M, y: top, w: coreW, h: ch});
+      const notes = R.constNotes.length ? R.constNotes.join('\n') : '';
+      if (notes) slide.addText(notes, {x: M, y: top + ch + 0.1, w: coreW, h: 0.8, fontSize: 9, color: '6B7380', valign: 'top'});
+    }
+    const ids = pagesIdx[pg];
+    const head = T.cols.map(c => ({text: c.label, options: {bold: true, fill: {color: 'F3F5F8'}, align: 'center', valign: 'middle', fontSize: 11}}));
+    const body = ids.map(ri => T.cols.map((c, j) => {
+      const cell = T.cells[ri][j];
+      const o = {align: 'center', valign: 'middle', fontSize: c.type === 'r' ? 12 : (c.type === 'id' && String(cell.text).length > 9 ? 8.5 : 11), bold: !!cell.bold};
+      if (cell.bg) o.fill = {color: cell.bg.slice(1)};
+      if (cell.changed) o.border = [{type: 'solid', pt: 0.5, color: 'E6E8EC'}, {type: 'solid', pt: 0.5, color: 'E6E8EC'}, {type: 'solid', pt: 0.5, color: 'E6E8EC'}, {type: 'solid', pt: 3, color: 'E08A00'}];
+      return {text: cell.svg ? '' : (cell.text || ''), options: o};
+    }));
+    slide.addTable([head, ...body], {x: tableX, y: top, colW, rowH: [headH, ...ids.map(ri => rowHin[ri])], fontFace: 'Arial', color: '1D2430', border: {type: 'solid', pt: 0.5, color: 'E6E8EC'}, autoPage: false, margin: 0.03});
+    // structure images placed over their cells (the table itself stays editable)
+    let y = top + headH;
+    for (const ri of ids){
+      let x = tableX; const rh = rowHin[ri];
+      for (let j = 0; j < T.cols.length; j++){
+        const cell = T.cells[ri][j];
+        if (cell.svg){
+          const p = await toPng(cell.svg);
+          const s = Math.min((colW[j] - 0.06) / p.w, (rh - 0.06) / p.h);
+          const w = p.w * s, h = p.h * s;
+          slide.addImage({data: p.data, x: x + (colW[j] - w) / 2, y: y + (rh - h) / 2, w, h});
+        }
+        x += colW[j];
+      }
+      y += rh;
+    }
+    if (S.sourceNote) slide.addText(S.sourceNote, {x: M, y: SH - 0.42, w: SW - 2 * M - 1.4, h: 0.32, fontSize: 8, color: '6B7380', valign: 'middle'});
+    slide.addText('Chemva', {x: SW - 1.6, y: SH - 0.32, w: 1.3, h: 0.25, fontSize: 8, color: 'A0A6B0', align: 'right'});
+  }
+  const blob = await pptx.write({outputType: 'blob'});
+  await saveFile(fname('pptx'), blob);
+}
+
+/* ---------------- CSV / copy ---------------- */
+function tableText(delim){
+  const T = buildTable();
+  const R = S.result;
+  const q = s => { s = String(s ?? ''); return (delim === ',' && /[",\n]/.test(s)) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const head = ['ID', 'SMILES', ...T.cols.filter(c => c.type === 'r').map(c => c.label + ' (SMILES)'), ...T.cols.filter(c => c.type === 'data' || c.type === 'prop').map(c => c.label)];
+  const lines = [head.map(q).join(delim)];
+  T.rows.forEach((r, i) => {
+    const rs = T.cols.filter(c => c.type === 'r').map(c => { const g = r.R && r.R[c.label]; return !r.matched ? '' : (!g || isH(g) ? '[H]' : stripMaps(g)); });
+    const ds = T.cols.map((c, j) => (c.type === 'data' || c.type === 'prop') ? T.cells[i][j].text : null).filter(v => v !== null);
+    lines.push([r.id, r.smi, ...rs, ...ds].map(q).join(delim));
+  });
+  if (R.coreSmilesShown) lines.push('', q('# core') + delim + q(R.coreSmilesShown));
+  return lines.join('\n');
+}
+async function exportCsv(){ await saveFile(fname('csv'), new Blob(['﻿' + tableText(',')], {type: 'text/csv'})); }
+async function copyText(){
+  try { await navigator.clipboard.writeText(tableText('\t')); toast('已复制，可直接粘到 Excel'); }
+  catch(e){ toast('浏览器不允许复制，请用导出 CSV'); }
+}
+
+/* ---------------- downloads ---------------- */
+let dlNS;
+async function saveFile(name, blob){
+  try {
+    if (dlNS === undefined) dlNS = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null;
+  } catch(e){ dlNS = null; }
+  if (dlNS){
+    try { await dlNS.save({filename: name, data: blob}); toast('已保存 ' + name); }
+    catch(e){ if (e && e.code === 'declined') return; toast('保存失败：' + (e && e.code || e)); }
+    return;
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function fname(ext){
+  const t = ($('title').value.trim() || 'SAR').replace(/[\\/:*?"<>|（）()，,]+/g, ' ').trim().slice(0, 40).replace(/\s+/g, '_');
+  return `${t || 'SAR'}.${ext}`;
+}
+async function busy(btn, fn){
+  const b = $(btn), old = b.textContent; b.disabled = true; b.innerHTML = '<span class="loading"></span>' + old;
+  try { await fn(); } catch(e){ console.error(e); toast('导出出错：' + e); }
+  b.disabled = false; b.textContent = old;
+}
+$('btnPptx').onclick = () => busy('btnPptx', S.view === 'route' ? exportRoutePptx : exportPptx);
+$('btnPng').onclick = () => busy('btnPng', S.view === 'route' ? exportRoutePng : exportPng);
+$('btnCsv').onclick = () => busy('btnCsv', exportCsv);
+$('btnCopy').onclick = copyText;
+
+/* ---------------- utils ---------------- */
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function out(h){ $('output').innerHTML = h; }
+function msg(id, kind, t){ $(id).innerHTML = `<div class="msg ${kind}">${t}</div>`; }
+let toastT; function toast(t){ const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2200); }
+</script>
+<script>
+"use strict";
+/* ======================= view tabs ======================= */
+$('viewTabs').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('viewTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  S.view = b.dataset.v;
+  const tbl = S.view === 'table';
+  $('btnCsv').style.display = tbl ? '' : 'none'; $('btnCopy').style.display = tbl ? '' : 'none';
+  if (S.view === 'route' && $('title').value === 'SAR 表') $('title').value = '先导化合物演变路线';
+  if (S.view === 'scatter' && ($('title').value === 'SAR 表' || $('title').value === '先导化合物演变路线')) $('title').value = '活性 vs 性质';
+  if (S.result) rerender();
+});
+// rerender dispatcher for scatter (route is handled inside rerender)
+const _rerenderTable = rerender;
+rerender = function(){ if (S.result && S.view === 'scatter') return renderScatter(); return _rerenderTable(); };
+
+/* ======================= shared helpers ======================= */
+function fpOf(r){
+  if (!r._fp){
+    const bits = r.mol.get_morgan_fp(JSON.stringify({radius: 2, nBits: 2048}));
+    const set = new Set(); for (let i = 0; i < bits.length; i++) if (bits.charCodeAt(i) === 49) set.add(i);
+    r._fp = set;
+  }
+  return r._fp;
+}
+function tani(a, b){ const A = fpOf(a), B = fpOf(b); let c = 0; for (const x of A) if (B.has(x)) c++; return c / (A.size + B.size - c || 1); }
+function numVal(r, col){ const p = parseNum(r.raw[col.idx]); return p ? p.v : null; }
+function scoredCols(){ return S.cols.filter(c => c.role === 'data' && c.dir !== 'none'); }
+function primaryCol(){ const c = scoredCols(); return c.find(x => x.dir === 'low') || c[0] || null; }
+function shortName(col){ return col.name.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/selectivity/i, '选择性').trim().slice(0, 18); }
+function colorFor(col, raw){
+  const p = parseNum(raw);
+  if (!p || col.dir === 'none' || col._min === undefined || !(col._max > col._min)) return null;
+  let t = (col._tr(p.v) - col._min) / (col._max - col._min); t = Math.max(0, Math.min(1, t));
+  return heat(col.dir === 'low' ? t : 1 - t);
+}
+const NAME_EXTRA = [['*C1CCCCC1','cHex'],['*C1CCCC1','cPent'],['*C1CCOCC1','4-THP'],['*C1CCCOC1','3-THP'],['*C1CCNCC1','4-哌啶基'],
+  ['*C1CCCNC1','3-哌啶基'],['*N1CCOCC1','吗啉基'],['*N1CCN(C)CC1','4-甲基哌嗪基'],['*N1CCCCC1','哌啶-1-基'],['*Cc1ccccc1','Bn'],['*c1ccccc1','Ph'],
+  ['*c1ccncc1','4-吡啶基'],['*c1cccnc1','3-吡啶基'],['*c1ccccn1','2-吡啶基'],['*C(C)O','CH(OH)Me'],['*C(O)CC','CH(OH)Et'],['*C(C)(C)O','C(OH)Me₂'],
+  ['*C(O)CO','CH(OH)CH₂OH'],['*CCC#N','CH₂CH₂CN'],['*C1CCC(O)CC1','4-OH-cHex'],['*C1CCCCC1O','2-OH-cHex'],['*C1CCC(NS(C)(=O)=O)CC1','4-NHMs-cHex'],
+  ['*C1CCNCC1(F)F','3,3-二氟-4-哌啶基'],['*C1CCN(CCC#N)CC1','1-氰乙基-4-哌啶基'],['*C1CCN(Cc2ccccc2)CC1','1-苄基-4-哌啶基']];
+let nameMap = null;
+function routeName(g){
+  if (!g) return 'H';
+  if (!nameMap){ nameMap = {...smallMap}; NAME_EXTRA.forEach(([sm, l]) => { const m = RD.get_mol(sm); if (m){ nameMap[m.get_smiles()] = l; m.delete(); } }); }
+  if (isH(g)) return 'H';
+  const k = canonDummy(g); if (nameMap[k]) return nameMap[k];
+  const flat = canonDummy(g.replace(/@+/g, ''));
+  if (nameMap[flat]) return nameMap[flat] + '（手性）';
+  const sm = stripMaps(g).replace(/\[\*\]/g, '*');
+  return sm.length > 18 ? sm.slice(0, 17) + '…' : sm;
+}
+function wrapLines(ctx, text, maxW){
+  const out = [];
+  String(text).split('\n').forEach(par => {
+    let line = '';
+    for (const ch of par){ const t = line + ch; if (ctx.measureText(t).width > maxW && line){ out.push(line); line = ch; } else line = t; }
+    out.push(line);
+  });
+  return out;
+}
+function rrect(ctx, x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+const CFONT = '-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif';
+
+/* ======================= route ======================= */
+function recByI(i){ return S.result.valid.find(r => r.i === i); }
+const EXAMPLE_ROUTE = ['CHEMBL2159198', 'CHEMBL2386637', 'CHEMBL2386640'];
+function autoRoute(){
+  const R = S.result, V = R.valid; if (V.length < 2) return [];
+  if (S.sourceNote){ const ex = EXAMPLE_ROUTE.map(id => V.find(r => r.id === id)); if (ex.every(Boolean)) return ex.map(r => r.i); }
+  const pc = primaryCol();
+  const better = (a, b) => { if (!pc) return true; const va = numVal(a, pc), vb = numVal(b, pc); if (va == null || vb == null) return false; return pc.dir === 'low' ? vb < va : vb > va; };
+  const start = V[0];
+  let end = V[V.length - 1];
+  if (pc){
+    const withV = V.filter(r => numVal(r, pc) != null && r !== start);
+    if (withV.length) end = withV.reduce((best, r) => better(best, r) ? r : best);
+  }
+  const path = [start]; let cur = start;
+  while (cur !== end && path.length < 5){
+    const sCur = tani(cur, end);
+    const cands = V.filter(c => c !== end && !path.includes(c) && tani(c, end) > sCur + 0.02 && better(cur, c) && (!pc || !better(c, end) || true));
+    if (!cands.length) break;
+    cur = cands.reduce((b, c) => tani(cur, c) > tani(cur, b) ? c : b);
+    path.push(cur);
+  }
+  if (path[path.length - 1] !== end) path.push(end);
+  return path.map(r => r.i);
+}
+function describeChange(a, b){
+  const R = S.result;
+  if (R.mode === 'rgroup' && a.matched && b.matched){
+    const diffs = R.rLabels.filter(L => (a.Rcell[L] || {}).key !== (b.Rcell[L] || {}).key);
+    if (!diffs.length) return '立体化学改变';
+    return diffs.map(L => { const x = routeName(a.R[L]), y = routeName(b.R[L]); return (x + y).length > 12 ? `${L}: ${x} →\n${y}` : `${L}: ${x} → ${y}`; }).join('\n');
+  }
+  return '结构改变（见高亮）';
+}
+function foldChanges(a, b){
+  return scoredCols().slice(0, 3).map(col => {
+    const va = numVal(a, col), vb = numVal(b, col);
+    if (va == null || vb == null || va <= 0 || vb <= 0) return null;
+    const r = col.dir === 'low' ? va / vb : vb / va;
+    const f = r >= 1 ? r : 1 / r;
+    const txt = f < 1.15 ? '≈' : (f < 10 ? f.toFixed(1) : Math.round(f)) + '×' + (r >= 1 ? ' ▲' : ' ▼');
+    return {name: shortName(col), txt, cls: f < 1.15 ? '' : (r >= 1 ? 'up' : 'down')};
+  }).filter(Boolean);
+}
+const routeSvgCache = new Map();
+function routeSvg(rec, prev){
+  const key = rec.i + '|' + (prev ? prev.i : '') + '|' + (S.result.templateSmi || '');
+  if (routeSvgCache.has(key)) return routeSvgCache.get(key);
+  const m = RD.get_mol(rec.smi);
+  if (S.result.templateSmi){
+    const t = RD.get_mol(S.result.templateSmi);
+    if (t){ try { t.set_new_coords(true); m.generate_aligned_coords(t, JSON.stringify({useCoordGen: true, allowRGroups: true, acceptFailure: true})); } catch(e){} t.delete(); }
+  } else { try { m.set_new_coords(true); } catch(e){} }
+  const opt = {...DRAW_BASE, width: 230, height: 165, fixedBondLength: 20};
+  if (prev){
+    try {
+      const ml = new RD.MolList(); ml.append(prev.mol); ml.append(m);
+      const js = JSON.parse(RD.get_mcs_as_json(ml, JSON.stringify({RingMatchesRingOnly: true, CompleteRingsOnly: true, Timeout: 2})));
+      ml.delete();
+      const q = RD.get_qmol(js.smarts);
+      const mt = JSON.parse(m.get_substruct_match(q)); q.delete();
+      const keep = new Set(mt.atoms || []);
+      const j = JSON.parse(m.get_json()), mol0 = j.molecules[0];
+      const changed = mol0.atoms.map((_, i) => i).filter(i => !keep.has(i));
+      const cs = new Set(changed);
+      const bonds = (mol0.bonds || []).map((b, k) => [b.atoms, k]).filter(([ab]) => cs.has(ab[0]) || cs.has(ab[1])).map(([, k]) => k);
+      if (changed.length && changed.length < mol0.atoms.length){ opt.atoms = changed; opt.bonds = bonds; opt.highlightColour = [1.0, 0.80, 0.52]; opt.highlightRadius = 0.32; opt.highlightBondWidthMultiplier = 12; }
+    } catch(e){ console.warn('route mcs', e); }
+  }
+  const svg = m.get_svg_with_highlights(JSON.stringify(opt)); m.delete();
+  routeSvgCache.set(key, svg); return svg;
+}
+function stageLabel(pos, n, i){
+  if (S.route.labels[i] != null) return S.route.labels[i];
+  return pos === 0 ? '起点 / Hit' : pos === n - 1 ? '最优化合物' : `第 ${pos} 步`;
+}
+function routeModel(){
+  buildTable(); // refresh color scales on S.cols
+  if (!S.route.ids.length) S.route.ids = autoRoute();
+  const recs = S.route.ids.map(recByI).filter(Boolean);
+  const dcols = S.cols.filter(c => c.role === 'data').slice(0, 5);
+  const props = PROPS.filter(p => propOn[p.k]).slice(0, 3);
+  const steps = recs.map((r, k) => ({
+    rec: r, label: stageLabel(k, recs.length, r.i), svg: routeSvg(r, recs[k - 1]),
+    data: [...dcols.map(c => ({name: shortName(c), text: r.raw[c.idx] || '—', bg: colorFor(c, r.raw[c.idx])})),
+           ...props.map(p => ({name: p.label, text: r.desc ? p.fmt(p.get(r.desc)) : '—', bg: null}))]
+  }));
+  const arrows = recs.slice(1).map((b, k) => {
+    const a = recs[k], key = a.i + '>' + b.i;
+    return {key, note: S.route.notes[key] != null ? S.route.notes[key] : describeChange(a, b), folds: foldChanges(a, b)};
+  });
+  return {steps, arrows};
+}
+function renderRoute(){
+  const R = S.result;
+  if (R.valid.length < 2){ out('<div class="empty">至少需要 2 个化合物才能画路线。</div>'); return; }
+  const M = routeModel();
+  const inPath = new Set(S.route.ids);
+  let h = `<div class="route-bar"><span style="color:var(--muted)">路线：</span>`;
+  M.steps.forEach((s, k) => {
+    h += `<span class="chip"><b>${k + 1}</b>${esc(s.rec.id)}
+      <button data-act="left" data-k="${k}" title="前移" ${k === 0 ? 'disabled' : ''}>‹</button><button data-act="right" data-k="${k}" title="后移" ${k === M.steps.length - 1 ? 'disabled' : ''}>›</button><button data-act="del" data-k="${k}" title="移除">✕</button></span>`;
+  });
+  h += `<select id="routeAdd"><option value="">＋ 添加化合物</option>${R.valid.filter(r => !inPath.has(r.i)).map(r => `<option value="${r.i}">${esc(r.id)}</option>`).join('')}</select>
+    <button id="routeAuto">自动推荐</button></div>
+    <div class="hint" style="margin:-4px 0 10px">橙色 = 相对上一步改动的原子。阶段名和箭头上的文字都可以直接点击修改。▲ = 变好，▼ = 变差。</div>
+    <div class="route">`;
+  M.steps.forEach((s, k) => {
+    if (k > 0){
+      const a = M.arrows[k - 1];
+      h += `<div class="rarrow"><div class="note" contenteditable="true" data-key="${esc(a.key)}">${esc(a.note)}</div><div class="line"></div>
+        <div class="fold">${a.folds.map(f => `<div>${esc(f.name)} <span class="${f.cls}">${esc(f.txt)}</span></div>`).join('')}</div></div>`;
+    }
+    h += `<div class="rcard ${k === M.steps.length - 1 ? 'last' : ''}"><div class="stage" contenteditable="true" data-i="${s.rec.i}">${esc(s.label)}</div>
+      <div class="rid">${esc(s.rec.id)}</div><div class="rsvg">${s.svg}</div>
+      <div class="rdata">${s.data.map(d => `<span title="${esc(d.name)}">${esc(d.name)}</span><span style="${d.bg ? 'background:' + d.bg : ''}">${esc(d.text)}</span>`).join('')}</div></div>`;
+  });
+  h += `</div>`;
+  if (S.sourceNote) h += `<div class="legend" style="margin-top:10px">${esc(S.sourceNote)}</div>`;
+  out(h);
+  document.querySelectorAll('.route-bar .chip button').forEach(b => b.onclick = () => {
+    const k = +b.dataset.k, ids = S.route.ids;
+    if (b.dataset.act === 'del'){ ids.splice(k, 1); if (ids.length < 2){ toast('路线至少保留 2 个化合物'); if (!ids.length) S.route.ids = []; } }
+    if (b.dataset.act === 'left' && k > 0) [ids[k - 1], ids[k]] = [ids[k], ids[k - 1]];
+    if (b.dataset.act === 'right' && k < ids.length - 1) [ids[k + 1], ids[k]] = [ids[k], ids[k + 1]];
+    renderRoute();
+  });
+  $('routeAdd').onchange = e => { if (e.target.value !== ''){ S.route.ids.push(+e.target.value); renderRoute(); } };
+  $('routeAuto').onclick = () => { S.route = {ids: autoRoute(), labels: {}, notes: {}}; renderRoute(); };
+  document.querySelectorAll('.rcard .stage').forEach(el => el.oninput = () => { S.route.labels[+el.dataset.i] = el.innerText.trim(); });
+  document.querySelectorAll('.rarrow .note').forEach(el => el.oninput = () => { S.route.notes[el.dataset.key] = el.innerText.trim(); });
+  ['btnPptx','btnPng'].forEach(id => $(id).disabled = false);
+}
+
+/* ---- route layout shared by PNG / PPT (px units) ---- */
+function routeLayout(M, perRow){
+  const n = M.steps.length, cardW = 250, gapW = 136, pad = 12;
+  const dataH = 21 * Math.max(...M.steps.map(s => s.data.length), 0);
+  const cardH = pad + 22 + 18 + 170 + 8 + dataH + pad;
+  const rows = []; for (let k = 0; k < n; k += perRow) rows.push(M.steps.slice(k, k + perRow).map((s, j) => k + j));
+  const rowW = Math.min(n, perRow) * cardW + (Math.min(n, perRow) - 1) * gapW;
+  const rowGap = 64;
+  const cards = [], arrows = [];
+  rows.forEach((ids, ri) => ids.forEach((k, j) => {
+    const x = j * (cardW + gapW), y = ri * (cardH + rowGap);
+    cards.push({k, x, y, w: cardW, h: cardH});
+    if (k > 0){
+      if (j > 0) arrows.push({k: k - 1, x: x - gapW, y, w: gapW, h: cardH, wrap: false});
+      else arrows.push({k: k - 1, x: 0, y: y - rowGap, w: rowW, h: rowGap, wrap: true});
+    }
+  }));
+  return {cards, arrows, W: rowW, H: rows.length * cardH + (rows.length - 1) * rowGap, cardH, dataH};
+}
+async function exportRoutePng(){
+  const M = routeModel(), L = routeLayout(M, 5);
+  const sc = 2, pad = 28, title = $('title').value.trim();
+  const titleH = title ? 44 : 0, noteH = S.sourceNote ? 34 : 0;
+  const W = L.W + pad * 2, H = pad + titleH + L.H + noteH + pad;
+  const cv = document.createElement('canvas'); cv.width = W * sc; cv.height = H * sc;
+  const ctx = cv.getContext('2d'); ctx.scale(sc, sc); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = 'middle';
+  if (title){ ctx.fillStyle = '#1d2430'; ctx.font = `600 20px ${CFONT}`; ctx.fillText(title, pad, pad + 14); }
+  const ox = pad, oy = pad + titleH;
+  for (const c of L.cards){
+    const s = M.steps[c.k], x = ox + c.x, y = oy + c.y, last = c.k === M.steps.length - 1;
+    rrect(ctx, x, y, c.w, c.h, 12); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = last ? 2 : 1; ctx.strokeStyle = last ? '#8fb3dd' : '#d9dee6'; ctx.stroke();
+    ctx.textAlign = 'left'; ctx.fillStyle = '#1d2430'; ctx.font = `700 14px ${CFONT}`; ctx.fillText(s.label, x + 12, y + 12 + 11, c.w - 24);
+    ctx.fillStyle = '#6b7380'; ctx.font = `12px ${CFONT}`; ctx.fillText(s.rec.id, x + 12, y + 12 + 22 + 9, c.w - 24);
+    const img = await svgToImage(s.svg); ctx.drawImage(img, x + (c.w - 230) / 2, y + 12 + 40, 230, 165);
+    let yy = y + 12 + 40 + 170 + 8;
+    s.data.forEach(d => {
+      ctx.textAlign = 'left'; ctx.fillStyle = '#6b7380'; ctx.font = `12.5px ${CFONT}`; ctx.fillText(d.name, x + 12, yy + 10, c.w - 100);
+      ctx.font = `600 12.5px ${CFONT}`; const tw = ctx.measureText(d.text).width;
+      if (d.bg){ ctx.fillStyle = d.bg; rrect(ctx, x + c.w - 12 - tw - 12, yy + 1, tw + 12, 18, 4); ctx.fill(); }
+      ctx.fillStyle = '#1d2430'; ctx.textAlign = 'right'; ctx.fillText(d.text, x + c.w - 18, yy + 10);
+      yy += 21;
+    });
+  }
+  for (const a of L.arrows){
+    const A = M.arrows[a.k];
+    ctx.strokeStyle = '#5b7fa8'; ctx.fillStyle = '#5b7fa8'; ctx.lineWidth = 2;
+    if (!a.wrap){
+      const x0 = ox + a.x + 8, x1 = ox + a.x + a.w - 8, ym = oy + a.y + a.h / 2;
+      ctx.beginPath(); ctx.moveTo(x0, ym); ctx.lineTo(x1 - 10, ym); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x1, ym); ctx.lineTo(x1 - 12, ym - 6); ctx.lineTo(x1 - 12, ym + 6); ctx.closePath(); ctx.fill();
+      ctx.textAlign = 'center'; ctx.fillStyle = '#1d2430'; ctx.font = `12px ${CFONT}`;
+      const lines = wrapLines(ctx, A.note, a.w - 12);
+      lines.forEach((l, i) => ctx.fillText(l, ox + a.x + a.w / 2, ym - 12 - (lines.length - 1 - i) * 16));
+      A.folds.forEach((f, i) => { ctx.fillStyle = f.cls === 'up' ? '#1f7a45' : f.cls === 'down' ? '#b4382b' : '#6b7380'; ctx.font = `11.5px ${CFONT}`; ctx.fillText(`${f.name} ${f.txt}`, ox + a.x + a.w / 2, ym + 16 + i * 16, a.w - 6); });
+    } else {
+      const ym = oy + a.y + a.h / 2;
+      ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(ox + 20, ym); ctx.lineTo(ox + a.w - 20, ym); ctx.stroke(); ctx.setLineDash([]);
+      ctx.textAlign = 'center'; ctx.fillStyle = '#1d2430'; ctx.font = `12px ${CFONT}`;
+      ctx.fillText(`${A.note.replace(/\n/g, '；')}    ${A.folds.map(f => f.name + ' ' + f.txt).join('  ')}`, ox + a.w / 2, ym - 12, a.w - 40);
+    }
+  }
+  if (S.sourceNote){ ctx.textAlign = 'left'; ctx.fillStyle = '#6b7380'; ctx.font = `11px ${CFONT}`; ctx.fillText(S.sourceNote, pad, H - pad - 8, W - 2 * pad); }
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  await saveFile(fname('png'), blob);
+}
+async function exportRoutePptx(){
+  const M = routeModel();
+  const perRow = M.steps.length <= 5 ? 5 : Math.ceil(M.steps.length / 2);
+  const L = routeLayout(M, perRow);
+  const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE';
+  const SW = 13.33, SH = 7.5, Mg = 0.4, top = 1.1;
+  const s = Math.min((SW - 2 * Mg) / (L.W / 96), (SH - top - 0.55) / (L.H / 96)) / 96;
+  const ox = Mg + ((SW - 2 * Mg) - L.W * s) / 2, oy = top;
+  const slide = pptx.addSlide();
+  slide.addText($('title').value.trim() || '先导化合物演变路线', {x: Mg, y: 0.3, w: SW - 2 * Mg, h: 0.6, fontSize: 24, bold: true, color: '1D2430', fontFace: 'Arial'});
+  const fs = Math.max(7, Math.min(12, 12 * s * 96));
+  for (const c of L.cards){
+    const st = M.steps[c.k], x = ox + c.x * s, y = oy + c.y * s, w = c.w * s, h = c.h * s, last = c.k === M.steps.length - 1;
+    slide.addShape(pptx.ShapeType.roundRect, {x, y, w, h, fill: {color: 'FFFFFF'}, line: {color: last ? '8FB3DD' : 'D9DEE6', width: last ? 2 : 1}, rectRadius: 0.1});
+    slide.addText(st.label, {x: x + 0.05, y: y + 6 * s, w: w - 0.1, h: 22 * s, fontSize: fs + 2, bold: true, color: '1D2430', margin: 2});
+    slide.addText(st.rec.id, {x: x + 0.05, y: y + 28 * s, w: w - 0.1, h: 18 * s, fontSize: fs - 1, color: '6B7380', margin: 2});
+    const png = await svgToPng(st.svg, 230, 165, 3);
+    slide.addImage({data: png, x: x + (c.w - 230) / 2 * s, y: y + 52 * s, w: 230 * s, h: 165 * s});
+    if (st.data.length){
+      const rows = st.data.map(d => [{text: d.name, options: {color: '6B7380', align: 'left'}}, {text: d.text, options: {bold: true, align: 'right', fill: d.bg ? {color: d.bg.slice(1)} : undefined}}]);
+      slide.addTable(rows, {x: x + 8 * s, y: y + 230 * s, w: w - 16 * s, colW: [(w - 16 * s) * 0.6, (w - 16 * s) * 0.4], rowH: 21 * s, fontSize: fs - 1, fontFace: 'Arial', border: {type: 'none'}, margin: 0.02});
+    }
+  }
+  for (const a of L.arrows){
+    const A = M.arrows[a.k];
+    if (!a.wrap){
+      const x = ox + a.x * s, ym = oy + (a.y + a.h / 2) * s, w = a.w * s;
+      slide.addShape(pptx.ShapeType.line, {x: x + 0.06, y: ym, w: w - 0.12, h: 0, line: {color: '5B7FA8', width: 2, endArrowType: 'triangle'}});
+      slide.addText(A.note, {x, y: ym - 1.0, w, h: 0.95, fontSize: fs - 1, color: '1D2430', align: 'center', valign: 'bottom', margin: 2});
+      slide.addText(A.folds.map(f => ({text: `${f.name} ${f.txt}\n`, options: {color: f.cls === 'up' ? '1F7A45' : f.cls === 'down' ? 'B4382B' : '6B7380'}})), {x, y: ym + 0.06, w, h: 0.8, fontSize: fs - 2, align: 'center', valign: 'top', margin: 2});
+    } else {
+      const ym = oy + (a.y + a.h / 2) * s;
+      slide.addShape(pptx.ShapeType.line, {x: ox + 0.2, y: ym, w: L.W * s - 0.4, h: 0, line: {color: '5B7FA8', width: 1.5, dashType: 'dash'}});
+      slide.addText(`${A.note.replace(/\n/g, '；')}    ${A.folds.map(f => f.name + ' ' + f.txt).join('  ')}`, {x: ox, y: ym - 0.3, w: L.W * s, h: 0.28, fontSize: fs - 1, align: 'center', color: '1D2430'});
+    }
+  }
+  if (S.sourceNote) slide.addText(S.sourceNote, {x: Mg, y: SH - 0.42, w: SW - 2 * Mg - 1.4, h: 0.32, fontSize: 8, color: '6B7380'});
+  slide.addText('Chemva', {x: SW - 1.6, y: SH - 0.32, w: 1.3, h: 0.25, fontSize: 8, color: 'A0A6B0', align: 'right'});
+  const blob = await pptx.write({outputType: 'blob'});
+  await saveFile(fname('pptx'), blob);
+}
+</script>
+
+<script>
+"use strict";
+/* ======================= scatter ======================= */
+S.scatter = {x: null, y: null, c: null, labels: true};
+function potencyP(col){
+  const n = col.name;
+  const unit = /\(\s*nM\s*\)|\bnM\b/i.test(n) ? 9 : (/\(\s*(µM|uM|μM)\s*\)|\b(µM|uM|μM)\b/i.test(n) ? 6 : null);
+  if (unit == null || col.dir !== 'low') return null;
+  let label = n.replace(/\s*\((nM|µM|uM|μM)\)\s*/i, ' ').trim();
+  label = /\b(IC50|EC50|Ki|Kd|DC50|GI50|Kb|IC₅₀)\b/i.test(label) ? label.replace(/\b(IC50|EC50|Ki|Kd|DC50|GI50|Kb)\b/i, 'p$1') : 'p(' + label + ')';
+  return {label, off: unit};
+}
+function scatterVars(){
+  const vars = [];
+  const dcols = S.cols.filter(c => c.role === 'data');
+  let firstP = null;
+  dcols.forEach(c => {
+    const p = potencyP(c);
+    if (p){
+      const v = {key: 'px:' + c.idx, label: p.label, dir: 'high', isP: true, get: r => { const x = numVal(r, c); return x && x > 0 ? p.off - Math.log10(x) : null; }};
+      vars.push(v); if (!firstP) firstP = v;
+    }
+  });
+  dcols.forEach(c => vars.push({key: 'd:' + c.idx, label: c.name, dir: c.dir, get: r => numVal(r, c)}));
+  PROPS.forEach(p => vars.push({key: 'p:' + p.k, label: p.label, dir: 'none', get: r => r.desc ? p.get(r.desc) : null}));
+  if (firstP){
+    vars.push({key: 'lipe', label: `LipE（${firstP.label} − cLogP）`, dir: 'high', get: r => { const a = firstP.get(r); return a == null || !r.desc ? null : a - r.desc.CrippenClogP; }});
+    vars.push({key: 'le', label: `LE（${firstP.label}）`, dir: 'high', get: r => { const a = firstP.get(r); return a == null || !r.desc ? null : 1.37 * a / r.desc.NumHeavyAtoms; }});
+  }
+  return {vars, firstP};
+}
+function niceTicks(lo, hi, n = 6){
+  if (lo === hi){ lo -= 1; hi += 1; }
+  const span = hi - lo, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= step0) || mag * 10;
+  const t0 = Math.floor(lo / step) * step, t1 = Math.ceil(hi / step) * step, ticks = [];
+  for (let t = t0; t <= t1 + step * 1e-6; t += step) ticks.push(+t.toFixed(10));
+  return {ticks, lo: t0, hi: t1, step};
+}
+function fmtTick(v, step){ const d = step >= 1 ? 0 : Math.min(3, Math.ceil(-Math.log10(step))); return v.toFixed(d); }
+function scatterModel(){
+  buildTable();
+  const {vars, firstP} = scatterVars();
+  const byKey = k => vars.find(v => v.key === k);
+  const sc = S.scatter;
+  if (!byKey(sc.x)) sc.x = byKey('p:cLogP') ? 'p:cLogP' : vars[0].key;
+  if (!byKey(sc.y)) sc.y = (firstP || vars.find(v => v.key.startsWith('d:')) || vars[1]).key;
+  if (sc.c !== 'none' && !byKey(sc.c)){
+    const cand = vars.find(v => v.key.startsWith('d:') && v.dir === 'high' && v.key !== sc.y) || vars.find(v => v.key.startsWith('d:') && v.key !== 'd:' + (sc.y || '').split(':')[1] && !v.key.endsWith(':' + (sc.y || '').split(':')[1]));
+    sc.c = cand ? cand.key : 'none';
+  }
+  const X = byKey(sc.x), Y = byKey(sc.y), C = sc.c === 'none' ? null : byKey(sc.c);
+  const pts = S.result.valid.map(r => ({r, x: X.get(r), y: Y.get(r), c: C ? C.get(r) : null})).filter(p => p.x != null && p.y != null && isFinite(p.x) && isFinite(p.y));
+  return {vars, X, Y, C, pts, lipeGuides: sc.x === 'p:cLogP' && Y.isP};
+}
+function scatterSvg(M, W, H, forExport){
+  const m = {l: 62, r: M.C ? 120 : 24, t: 18, b: 52};
+  const pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const xs = M.pts.map(p => p.x), ys = M.pts.map(p => p.y);
+  const pad = (a, b) => { const d = (b - a) || 1; return [a - d * 0.06, b + d * 0.06]; };
+  const [xlo, xhi] = pad(Math.min(...xs), Math.max(...xs)), [ylo, yhi] = pad(Math.min(...ys), Math.max(...ys));
+  const TX = niceTicks(xlo, xhi), TY = niceTicks(ylo, yhi);
+  const sx = v => m.l + (v - TX.lo) / (TX.hi - TX.lo) * pw, sy = v => m.t + ph - (v - TY.lo) / (TY.hi - TY.lo) * ph;
+  const F = `font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',Arial,sans-serif`;
+  let g = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="${F}">`;
+  g += `<rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/>`;
+  TX.ticks.forEach(t => { const x = sx(t); g += `<line x1="${x}" y1="${m.t}" x2="${x}" y2="${m.t + ph}" stroke="#eef0f3"/><text x="${x}" y="${m.t + ph + 18}" font-size="11.5" fill="#6b7380" text-anchor="middle">${fmtTick(t, TX.step)}</text>`; });
+  TY.ticks.forEach(t => { const y = sy(t); g += `<line x1="${m.l}" y1="${y}" x2="${m.l + pw}" y2="${y}" stroke="#eef0f3"/><text x="${m.l - 8}" y="${y + 4}" font-size="11.5" fill="#6b7380" text-anchor="end">${fmtTick(t, TY.step)}</text>`; });
+  g += `<rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" fill="none" stroke="#c9ced6"/>`;
+  if (M.lipeGuides){
+    g += `<defs><clipPath id="pc"><rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}"/></clipPath></defs><g clip-path="url(#pc)">`;
+    for (let k = 2; k <= 8; k++){
+      const x0 = TX.lo, x1 = TX.hi;
+      g += `<line x1="${sx(x0)}" y1="${sy(x0 + k)}" x2="${sx(x1)}" y2="${sy(x1 + k)}" stroke="#b9c6d6" stroke-dasharray="4 4"/>`;
+      const yAtR = x1 + k; if (yAtR > TY.lo && yAtR < TY.hi) g += `<text x="${m.l + pw - 4}" y="${sy(yAtR) - 4}" font-size="10.5" fill="#8a9bb0" text-anchor="end">LipE ${k}</text>`;
+      else { const xAtT = TY.hi - k; if (xAtT > TX.lo && xAtT < TX.hi) g += `<text x="${sx(xAtT) - 4}" y="${m.t + 12}" font-size="10.5" fill="#8a9bb0" text-anchor="end">LipE ${k}</text>`; }
+    }
+    g += `</g>`;
+  }
+  // color scale
+  let cfun = () => '#3d6fa8', clo = 0, chi = 1, useLog = false;
+  if (M.C){
+    const cv = M.pts.map(p => p.c).filter(v => v != null);
+    useLog = cv.length && cv.every(v => v > 0) && (M.C.dir === 'low' || Math.max(...cv) / Math.min(...cv) >= 20);
+    const tr = v => useLog ? Math.log10(v) : v;
+    clo = Math.min(...cv.map(tr)); chi = Math.max(...cv.map(tr));
+    cfun = v => { if (v == null) return '#c3c8d0'; let t = chi > clo ? (tr(v) - clo) / (chi - clo) : .5; t = Math.max(0, Math.min(1, t));
+      if (M.C.dir === 'low') return heatStrong(t); if (M.C.dir === 'high') return heatStrong(1 - t); return blueRamp(t); };
+  }
+  const route = new Set(S.route.ids);
+  const pts = [...M.pts].sort((a, b) => route.has(a.r.i) - route.has(b.r.i));
+  pts.forEach(p => {
+    const x = sx(p.x), y = sy(p.y), inR = route.has(p.r.i);
+    g += `<circle class="pt" data-i="${p.r.i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${inR ? 7.5 : 6.5}" fill="${cfun(p.c)}" stroke="${inR ? '#1d2430' : '#ffffff'}" stroke-width="${inR ? 1.8 : 1.2}" fill-opacity="0.92" style="cursor:pointer"/>`;
+  });
+  if (S.scatter.labels && M.pts.length <= 60){
+    M.pts.forEach(p => { g += `<text x="${(sx(p.x) + 9).toFixed(1)}" y="${(sy(p.y) + 4).toFixed(1)}" font-size="10.5" fill="#4a5361" pointer-events="none">${esc(p.r.id)}</text>`; });
+  }
+  g += `<text x="${m.l + pw / 2}" y="${H - 12}" font-size="13" font-weight="600" fill="#1d2430" text-anchor="middle">${esc(M.X.label)}</text>`;
+  g += `<text transform="translate(16,${m.t + ph / 2}) rotate(-90)" font-size="13" font-weight="600" fill="#1d2430" text-anchor="middle">${esc(M.Y.label)}</text>`;
+  if (M.C){
+    const lx = m.l + pw + 26, ly = m.t + 18, lh = Math.min(180, ph - 40);
+    g += `<defs><linearGradient id="cg" x1="0" y1="1" x2="0" y2="0">`;
+    for (let k = 0; k <= 10; k++){ const t = k / 10; const v = useLog ? Math.pow(10, clo + t * (chi - clo)) : clo + t * (chi - clo); g += `<stop offset="${t}" stop-color="${cfun(v)}"/>`; }
+    g += `</linearGradient></defs><rect x="${lx}" y="${ly}" width="14" height="${lh}" fill="url(#cg)" rx="3"/>`;
+    const fv = t => { const v = useLog ? Math.pow(10, t) : t; return Math.abs(v) >= 100 ? v.toFixed(0) : +v.toPrecision(2) + ''; };
+    g += `<text x="${lx + 20}" y="${ly + 8}" font-size="11" fill="#4a5361">${fv(chi)}</text><text x="${lx + 20}" y="${ly + lh}" font-size="11" fill="#4a5361">${fv(clo)}</text>`;
+    const cl = M.C.label.replace(/selectivity/i, '选择性'); const words = cl.length > 14 ? [cl.slice(0, 14), cl.slice(14, 28)] : [cl];
+    words.forEach((w, i) => g += `<text x="${lx - 4}" y="${ly + lh + 20 + i * 14}" font-size="11" fill="#1d2430" font-weight="600">${esc(w)}</text>`);
+  }
+  g += `</svg>`;
+  return g;
+}
+function heatStrong(t){ // 0 good (green) .. 1 bad (red), more saturated for small markers
+  const a = [46, 158, 91], b = [235, 190, 60], c = [214, 79, 63];
+  const mix = (x, y, u) => x.map((v, i) => Math.round(v + (y[i] - v) * u));
+  const rgb = t < .5 ? mix(a, b, t * 2) : mix(b, c, (t - .5) * 2);
+  return '#' + rgb.map(v => v.toString(16).padStart(2, '0')).join('');
+}
+function blueRamp(t){ const a = [200, 216, 236], b = [31, 78, 140]; return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
+const tipSvgCache = new Map();
+function tipSvg(r){ if (!tipSvgCache.has(r.i)){ const m = RD.get_mol(r.smi); try { m.set_new_coords(true); } catch(e){} tipSvgCache.set(r.i, m.get_svg_with_highlights(JSON.stringify({...DRAW_BASE, width: 200, height: 140, fixedBondLength: 18}))); m.delete(); } return tipSvgCache.get(r.i); }
+function renderScatter(){
+  const R = S.result;
+  const M = scatterModel();
+  const opt = (sel, allowNone) => (allowNone ? `<option value="none" ${sel === 'none' ? 'selected' : ''}>不着色</option>` : '') + M.vars.map(v => `<option value="${esc(v.key)}" ${v.key === sel ? 'selected' : ''}>${esc(v.label)}</option>`).join('');
+  let h = `<div class="route-bar">
+    <label>X <select id="scX">${opt(S.scatter.x)}</select></label>
+    <label>Y <select id="scY">${opt(S.scatter.y)}</select></label>
+    <label>颜色 <select id="scC">${opt(S.scatter.c, true)}</select></label>
+    <label><input type="checkbox" id="scL" ${S.scatter.labels ? 'checked' : ''}> 显示 ID</label></div>
+    <div class="hint" style="margin:-4px 0 10px">Ki/IC50（nM 或 µM）已自动换算成 pKi/pIC50。X 选 cLogP、Y 选 p 值时会画 LipE 参考线。悬停看结构，点击可加入/移出演变路线（黑框 = 已在路线里）。</div>`;
+  if (M.pts.length < 2){ out(h + `<div class="empty">这两列能画的数据不到 2 个点，换一列试试。</div>`); bindScatter(); return; }
+  h += `<div id="scWrap" style="position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden"></div>
+    <div class="legend">${M.pts.length} 个化合物${R.valid.length > M.pts.length ? `（${R.valid.length - M.pts.length} 个缺数据未画）` : ''}</div>`;
+  if (S.sourceNote) h += `<div class="legend" style="margin-top:4px">${esc(S.sourceNote)}</div>`;
+  out(h);
+  const wrap = $('scWrap');
+  const W = Math.max(520, Math.min(980, wrap.clientWidth || 900)), H = Math.round(Math.min(560, Math.max(380, W * 0.6)));
+  wrap.innerHTML = scatterSvg(M, W, H) + `<div id="scTip" style="position:absolute;display:none;pointer-events:none;background:#fff;border:1px solid #d9dee6;border-radius:10px;box-shadow:0 4px 16px rgba(20,30,50,.12);padding:8px 10px;font-size:12px;width:220px;z-index:3"></div>`;
+  const svgEl = wrap.querySelector('svg'); svgEl.style.width = '100%'; svgEl.style.height = 'auto'; svgEl.style.display = 'block';
+  const tip = $('scTip');
+  wrap.querySelectorAll('circle.pt').forEach(c => {
+    const r = recByI(+c.dataset.i), p = M.pts.find(q => q.r.i === r.i);
+    const show = () => {
+      tip.innerHTML = `<b>${esc(r.id)}</b><div>${tipSvg(r)}</div><div>${esc(M.X.label)}: <b>${(+p.x).toPrecision(3)}</b></div><div>${esc(M.Y.label)}: <b>${(+p.y).toPrecision(3)}</b></div>${M.C && p.c != null ? `<div>${esc(M.C.label)}: <b>${(+p.c).toPrecision(3)}</b></div>` : ''}<div style="color:var(--muted);margin-top:3px">${S.route.ids.includes(r.i) ? '点击移出路线' : '点击加入演变路线'}</div>`;
+      const box = wrap.getBoundingClientRect(), cb = c.getBoundingClientRect();
+      let x = cb.left - box.left + 14, y = cb.top - box.top - 10;
+      if (x + 230 > box.width) x = cb.left - box.left - 234;
+      if (y + 260 > box.height) y = Math.max(4, box.height - 264);
+      tip.style.left = x + 'px'; tip.style.top = y + 'px'; tip.style.display = 'block';
+    };
+    c.onmouseenter = show; c.onmouseleave = () => tip.style.display = 'none';
+    c.onclick = () => {
+      if (!S.route.ids.length) S.route.ids = autoRoute();
+      const k = S.route.ids.indexOf(r.i);
+      if (k >= 0){ S.route.ids.splice(k, 1); toast(`已从路线移出 ${r.id}`); }
+      else { S.route.ids.push(r.i); toast(`已加入路线：${r.id}（到“演变路线”调整顺序）`); }
+      renderScatter();
+    };
+  });
+  bindScatter();
+  ['btnPptx','btnPng'].forEach(id => $(id).disabled = false);
+}
+function bindScatter(){
+  const on = (id, f) => { const el = $(id); if (el) el.onchange = f; };
+  on('scX', e => { S.scatter.x = e.target.value; renderScatter(); });
+  on('scY', e => { S.scatter.y = e.target.value; renderScatter(); });
+  on('scC', e => { S.scatter.c = e.target.value; renderScatter(); });
+  on('scL', e => { S.scatter.labels = e.target.checked; renderScatter(); });
+}
+async function scatterPngData(W, H, scale){
+  const M = scatterModel();
+  const svg = scatterSvg(M, W, H, true);
+  const img = await svgToImage(svg);
+  const cv = document.createElement('canvas'); cv.width = W * scale; cv.height = H * scale;
+  cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+  return {cv, M};
+}
+async function exportScatterPng(){
+  const title = $('title').value.trim();
+  const W = 960, H = 600, sc = 2, top = title ? 48 : 12, foot = S.sourceNote ? 34 : 10;
+  const {cv: plot} = await scatterPngData(W, H, sc);
+  const cv = document.createElement('canvas'); cv.width = W * sc; cv.height = (H + top + foot) * sc;
+  const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.scale(sc, sc);
+  if (title){ ctx.fillStyle = '#1d2430'; ctx.font = `600 20px ${CFONT}`; ctx.textBaseline = 'middle'; ctx.fillText(title, 24, 26); }
+  ctx.drawImage(plot, 0, top, W, H);
+  if (S.sourceNote){ ctx.fillStyle = '#6b7380'; ctx.font = `11px ${CFONT}`; ctx.textBaseline = 'middle'; ctx.fillText(S.sourceNote, 24, top + H + 16, W - 48); }
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  await saveFile(fname('png'), blob);
+}
+async function exportScatterPptx(){
+  const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE';
+  const SW = 13.33, SH = 7.5, Mg = 0.4, title = $('title').value.trim() || '活性 vs 性质';
+  const {cv, M} = await scatterPngData(1200, 600, 2.5);
+  const s1 = pptx.addSlide();
+  s1.addText(title, {x: Mg, y: 0.3, w: SW - 2 * Mg, h: 0.6, fontSize: 24, bold: true, color: '1D2430', fontFace: 'Arial'});
+  s1.addImage({data: cv.toDataURL('image/png'), x: Mg, y: 1.05, w: SW - 2 * Mg, h: (SW - 2 * Mg) / 2});
+  if (S.sourceNote) s1.addText(S.sourceNote, {x: Mg, y: SH - 0.42, w: SW - 2 * Mg - 1.4, h: 0.32, fontSize: 8, color: '6B7380'});
+  // slide 2: native, editable PowerPoint chart
+  const s2 = pptx.addSlide();
+  s2.addText(title + '（可编辑图表）', {x: Mg, y: 0.3, w: SW - 2 * Mg, h: 0.6, fontSize: 24, bold: true, color: '1D2430', fontFace: 'Arial'});
+  s2.addChart(pptx.ChartType.scatter, [{name: M.X.label, values: M.pts.map(p => +p.x.toFixed(3))}, {name: M.Y.label, values: M.pts.map(p => +p.y.toFixed(3)), labels: M.pts.map(p => p.r.id)}], {
+    ...(() => { const xs = M.pts.map(p => p.x), ys = M.pts.map(p => p.y), dx = (Math.max(...xs) - Math.min(...xs)) * 0.08 || 0.5, dy = (Math.max(...ys) - Math.min(...ys)) * 0.08 || 0.5; const r = v => +v.toFixed(1); return {catAxisMinVal: r(Math.min(...xs) - dx), catAxisMaxVal: r(Math.max(...xs) + dx), valAxisMinVal: r(Math.min(...ys) - dy), valAxisMaxVal: r(Math.max(...ys) + dy)}; })(),
+    x: Mg, y: 1.05, w: SW - 2 * Mg, h: 5.7, lineSize: 0, lineDataSymbol: 'circle', lineDataSymbolSize: 9, chartColors: ['3D6FA8'],
+    showLegend: false, showValAxisTitle: true, valAxisTitle: M.Y.label, showCatAxisTitle: true, catAxisTitle: M.X.label,
+    valAxisTitleFontSize: 12, catAxisTitleFontSize: 12, valGridLine: {color: 'EEF0F3', size: 1}, catGridLine: {color: 'EEF0F3', size: 1}
+  });
+  s2.addText('PowerPoint 原生图表：右键 → 编辑数据 可改数值、坐标轴和样式。', {x: Mg, y: SH - 0.45, w: SW - 2 * Mg, h: 0.3, fontSize: 9, color: '6B7380'});
+  const blob = await pptx.write({outputType: 'blob'});
+  await saveFile(fname('pptx'), blob);
+}
+// export dispatch
+$('btnPptx').onclick = () => busy('btnPptx', S.view === 'route' ? exportRoutePptx : S.view === 'scatter' ? exportScatterPptx : exportPptx);
+$('btnPng').onclick = () => busy('btnPng', S.view === 'route' ? exportRoutePng : S.view === 'scatter' ? exportScatterPng : exportPng);
+</script>
+
+<script>
+"use strict";
+/* ======================= compound cards ======================= */
+S.cards = {ids: [], tags: {}, notes: {}, perSlide: 3};
+(() => {
+  const cb = document.querySelector('#viewTabs button[data-v=cards]'), prev = cb.onclick;
+  cb.onclick = () => { if (['SAR 表', '先导化合物演变路线', '活性 vs 性质'].includes($('title').value)) $('title').value = '重点化合物'; prev(); };
+})();
+const _rerender2 = rerender;
+rerender = function(){ if (S.result && S.view === 'cards') return renderCards(); return _rerender2(); };
+
+const LIMITS = [
+  {k: 'MW', label: 'MW', get: d => d.amw, lim: 500, fmt: v => v.toFixed(1)},
+  {k: 'cLogP', label: 'cLogP', get: d => d.CrippenClogP, lim: 5, fmt: v => v.toFixed(2)},
+  {k: 'TPSA', label: 'TPSA', get: d => d.tpsa, lim: 140, fmt: v => v.toFixed(0)},
+  {k: 'HBD', label: 'HBD', get: d => d.NumHBD, lim: 5, fmt: v => String(v)},
+  {k: 'HBA', label: 'HBA', get: d => d.NumHBA, lim: 10, fmt: v => String(v)},
+  {k: 'RotB', label: 'RotB', get: d => d.NumRotatableBonds, lim: 10, fmt: v => String(v)},
+];
+function rankText(rec, col){
+  const vals = S.result.valid.map(r => ({r, v: numVal(r, col)})).filter(x => x.v != null);
+  const me = vals.find(x => x.r === rec); if (!me) return null;
+  const better = vals.filter(x => col.dir === 'low' ? x.v < me.v : x.v > me.v).length;
+  return `${better + 1} / ${vals.length}`;
+}
+function defaultCards(useRoute = true){
+  if (useRoute && S.route.ids.length) return S.route.ids.slice(0, 6);
+  const pc = primaryCol(), V = S.result.valid;
+  if (!pc) return V.slice(0, 3).map(r => r.i);
+  return V.filter(r => numVal(r, pc) != null).sort((a, b) => pc.dir === 'low' ? numVal(a, pc) - numVal(b, pc) : numVal(b, pc) - numVal(a, pc)).slice(0, 3).map(r => r.i);
+}
+const cardSvgCache = new Map();
+function cardSvg(rec){
+  const key = rec.i + '|' + (S.result.templateSmi || '');
+  if (cardSvgCache.has(key)) return cardSvgCache.get(key);
+  const m = RD.get_mol(rec.smi);
+  if (S.result.templateSmi){
+    const t = RD.get_mol(S.result.templateSmi);
+    if (t){ try { t.set_new_coords(true); m.generate_aligned_coords(t, JSON.stringify({useCoordGen: true, allowRGroups: true, acceptFailure: true})); } catch(e){} t.delete(); }
+  } else { try { m.set_new_coords(true); m.straighten_depiction(); } catch(e){} }
+  const svg = m.get_svg_with_highlights(JSON.stringify({...DRAW_BASE, width: 328, height: 210, fixedBondLength: 25, addStereoAnnotation: true}));
+  m.delete(); cardSvgCache.set(key, svg); return svg;
+}
+function radarSvg(d, size){
+  const n = LIMITS.length, cx = size / 2, cy = size / 2 + 2, R = size / 2 - 22, MAXR = 1.5;
+  const ang = k => -Math.PI / 2 + k * 2 * Math.PI / n;
+  const pt = (k, f) => [cx + Math.cos(ang(k)) * R * f, cy + Math.sin(ang(k)) * R * f];
+  let g = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="font-family:-apple-system,'Segoe UI',Arial,sans-serif">`;
+  g += `<polygon points="${LIMITS.map((_, k) => pt(k, 0.5 / MAXR).join(',')).join(' ')}" fill="none" stroke="#e3e6eb"/>`;
+  const lim = LIMITS.map((_, k) => pt(k, 1 / MAXR).join(',')).join(' ');
+  g += `<polygon points="${LIMITS.map((_, k) => pt(k, 1).join(',')).join(' ')}" fill="none" stroke="#eef0f3"/>`;
+  g += `<polygon points="${lim}" fill="#f1f6fc" stroke="#9db8d6" stroke-dasharray="3 3"/>`;
+  LIMITS.forEach((_, k) => { const [x, y] = pt(k, 1); g += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#eef0f3"/>`; });
+  const vals = LIMITS.map(L => Math.max(0, Math.min(MAXR, L.get(d) / L.lim)));
+  g += `<polygon points="${vals.map((v, k) => pt(k, v / MAXR).join(',')).join(' ')}" fill="rgba(61,111,168,.28)" stroke="#3d6fa8" stroke-width="1.6"/>`;
+  vals.forEach((v, k) => { const [x, y] = pt(k, v / MAXR); g += `<circle cx="${x}" cy="${y}" r="2.8" fill="${v > 1 ? '#c8402f' : '#3d6fa8'}"/>`; });
+  LIMITS.forEach((L, k) => { const [x, y] = pt(k, 1.18); g += `<text x="${x}" y="${y + 3}" font-size="10" fill="${vals[k] > 1 ? '#c8402f' : '#6b7380'}" text-anchor="middle">${L.label}</text>`; });
+  return g + `</svg>`;
+}
+function cardModel(){
+  buildTable();
+  if (!S.cards.init){ S.cards.ids = defaultCards(); S.cards.init = true; }
+  const ok = new Set(S.result.valid.map(r => r.i)); S.cards.ids = S.cards.ids.filter(i => ok.has(i));
+  const dcols = S.cols.filter(c => c.role === 'data').slice(0, 6);
+  const pc = primaryCol(), pp = pc ? potencyP(pc) : null;
+  return S.cards.ids.map(i => {
+    const r = recByI(i), d = r.desc || {};
+    const act = dcols.map(c => ({name: c.name.replace(/selectivity/i, '选择性'), text: r.raw[c.idx] || '—', bg: colorFor(c, r.raw[c.idx])}));
+    const derived = [];
+    if (pc){ const rk = rankText(r, pc); if (rk) derived.push({name: `${shortName(pc)} 排名`, text: rk}); }
+    if (pp && r.desc){ const v = numVal(r, pc); if (v && v > 0){ const p = pp.off - Math.log10(v); derived.push({name: pp.label, text: p.toFixed(2)}); derived.push({name: 'LipE', text: (p - d.CrippenClogP).toFixed(2)}); derived.push({name: 'LE', text: (1.37 * p / d.NumHeavyAtoms).toFixed(2)}); } }
+    const props = r.desc ? LIMITS.map(L => ({name: L.label, text: L.fmt(L.get(d)), bad: L.get(d) > L.lim, lim: L.lim})) : [];
+    return {rec: r, tag: S.cards.tags[i] ?? '', note: S.cards.notes[i] ?? '', svg: cardSvg(r), radar: r.desc ? radarSvg(d, 150) : '', act, derived, props};
+  });
+}
+function renderCards(){
+  const R = S.result;
+  const C = cardModel(), inSet = new Set(S.cards.ids);
+  let h = `<div class="route-bar"><span style="color:var(--muted)">卡片：</span>`;
+  C.forEach((c, k) => h += `<span class="chip">${esc(c.rec.id)}<button data-act="left" data-k="${k}" ${k === 0 ? 'disabled' : ''}>‹</button><button data-act="right" data-k="${k}" ${k === C.length - 1 ? 'disabled' : ''}>›</button><button data-act="del" data-k="${k}">✕</button></span>`);
+  h += `<select id="cardAdd"><option value="">＋ 添加化合物</option>${R.valid.filter(r => !inSet.has(r.i)).map(r => `<option value="${r.i}">${esc(r.id)}</option>`).join('')}</select>
+    <button id="cardTop">活性前 3</button><button id="cardRoute" ${S.route.ids.length ? '' : 'disabled'}>用路线里的化合物</button>
+    <label style="margin-left:auto">PPT 每页 <select id="cardPer">${[1, 2, 3].map(n => `<option ${S.cards.perSlide === n ? 'selected' : ''}>${n}</option>`).join('')}</select> 张</label></div>
+    <div class="hint" style="margin:-4px 0 10px">标签和备注可以直接点击填写，会带进导出的 PPT 和 PNG。性质超出 Ro5 / Veber 限值的标红；雷达图虚线 = 限值。</div>`;
+  if (!C.length){ out(h + '<div class="empty">还没有选化合物，从上面添加一个。</div>'); bindCards(); return; }
+  h += `<div class="cards">`;
+  C.forEach(c => {
+    h += `<div class="ccard">
+      <div class="chead"><div class="ctag" contenteditable="true" data-i="${c.rec.i}" data-ph="＋ 标签（如 Lead / 候选）">${esc(c.tag)}</div><div class="cid">${esc(c.rec.id)}</div></div>
+      <div class="csvg">${c.svg}</div>
+      <div class="csec">活性</div>
+      <div class="rdata">${c.act.map(a => `<span title="${esc(a.name)}">${esc(a.name)}</span><span style="${a.bg ? 'background:' + a.bg : ''}">${esc(a.text)}</span>`).join('')}
+        ${c.derived.map(a => `<span>${esc(a.name)}</span><span>${esc(a.text)}</span>`).join('')}</div>
+      <div class="csec">性质</div>
+      <div class="cprop"><div class="rdata">${c.props.map(p => `<span>${esc(p.name)}</span><span class="${p.bad ? 'bad' : ''}" title="限值 ${p.lim}">${esc(p.text)}</span>`).join('')}</div><div>${c.radar}</div></div>
+      <div class="cnote" contenteditable="true" data-i="${c.rec.i}" data-ph="备注：亮点 / 问题 / 下一步…">${esc(c.note)}</div>
+    </div>`;
+  });
+  h += `</div>`;
+  if (S.sourceNote) h += `<div class="legend" style="margin-top:10px">${esc(S.sourceNote)}</div>`;
+  out(h); bindCards();
+  ['btnPptx','btnPng'].forEach(id => $(id).disabled = false);
+}
+function bindCards(){
+  document.querySelectorAll('.route-bar .chip button').forEach(b => b.onclick = () => {
+    const k = +b.dataset.k, ids = S.cards.ids;
+    if (b.dataset.act === 'del') ids.splice(k, 1);
+    if (b.dataset.act === 'left' && k > 0) [ids[k - 1], ids[k]] = [ids[k], ids[k - 1]];
+    if (b.dataset.act === 'right' && k < ids.length - 1) [ids[k + 1], ids[k]] = [ids[k], ids[k + 1]];
+    renderCards();
+  });
+  const add = $('cardAdd'); if (add) add.onchange = e => { if (e.target.value !== ''){ S.cards.ids.push(+e.target.value); renderCards(); } };
+  const top = $('cardTop'); if (top) top.onclick = () => { S.cards.ids = defaultCards(false); renderCards(); };
+  const rt = $('cardRoute'); if (rt) rt.onclick = () => { S.cards.ids = S.route.ids.slice(0, 6); renderCards(); };
+  const per = $('cardPer'); if (per) per.onchange = e => { S.cards.perSlide = +e.target.value; };
+  document.querySelectorAll('.ccard .ctag').forEach(el => el.oninput = () => { S.cards.tags[+el.dataset.i] = el.innerText.trim(); });
+  document.querySelectorAll('.ccard .cnote').forEach(el => el.oninput = () => { S.cards.notes[+el.dataset.i] = el.innerText.trim(); });
+}
+
+/* ---- card layout in px, shared by PNG / PPT ---- */
+const CARD_W = 360;
+function cardGeom(c){
+  const pad = 16, rowH = 21;
+  const g = {pad, rowH};
+  g.head = 16; g.svgY = 50; g.actTitle = g.svgY + 214;
+  g.actY = g.actTitle + 20; const nAct = c.act.length + c.derived.length;
+  g.propTitle = g.actY + nAct * rowH + 10;
+  g.propY = g.propTitle + 20; g.propH = Math.max(c.props.length * rowH, 150);
+  g.noteY = g.propY + g.propH + 10; g.noteH = 66;
+  g.H = g.noteY + g.noteH + pad;
+  return g;
+}
+async function drawCardCanvas(ctx, c, x0, y0){
+  const g = cardGeom(c), W = CARD_W;
+  rrect(ctx, x0, y0, W, g.H, 14); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#d9dee6'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  let tx = x0 + g.pad;
+  if (c.tag){ ctx.font = `600 12px ${CFONT}`; const tw = ctx.measureText(c.tag).width; ctx.fillStyle = '#e8f0fa'; rrect(ctx, tx, y0 + g.head, tw + 16, 22, 11); ctx.fill(); ctx.fillStyle = '#24507e'; ctx.fillText(c.tag, tx + 8, y0 + g.head + 11); tx += tw + 26; }
+  ctx.fillStyle = '#1d2430'; ctx.font = `700 17px ${CFONT}`; ctx.fillText(c.rec.id, tx, y0 + g.head + 11, W - (tx - x0) - g.pad);
+  const img = await svgToImage(c.svg); ctx.drawImage(img, x0 + (W - 328) / 2, y0 + g.svgY, 328, 210);
+  const sec = (t, y) => { ctx.fillStyle = '#6b7380'; ctx.font = `600 12px ${CFONT}`; ctx.textAlign = 'left'; ctx.fillText(t, x0 + g.pad, y + 8); ctx.strokeStyle = '#eef0f3'; ctx.beginPath(); ctx.moveTo(x0 + g.pad + 32, y + 8.5); ctx.lineTo(x0 + W - g.pad, y + 8.5); ctx.stroke(); };
+  const row = (name, text, y, x, w, bg, bad) => {
+    ctx.textAlign = 'left'; ctx.fillStyle = '#6b7380'; ctx.font = `12.5px ${CFONT}`; ctx.fillText(name, x, y + 10, w - 70);
+    ctx.font = `600 12.5px ${CFONT}`; const tw = ctx.measureText(text).width;
+    if (bg){ ctx.fillStyle = bg; rrect(ctx, x + w - tw - 12, y + 1, tw + 12, 18, 4); ctx.fill(); }
+    ctx.fillStyle = bad ? '#c8402f' : '#1d2430'; ctx.textAlign = 'right'; ctx.fillText(text, x + w - 6, y + 10);
+  };
+  sec('活性', y0 + g.actTitle);
+  [...c.act, ...c.derived].forEach((a, k) => row(a.name, a.text, y0 + g.actY + k * g.rowH, x0 + g.pad, W - 2 * g.pad, a.bg));
+  sec('性质', y0 + g.propTitle);
+  c.props.forEach((p, k) => row(p.name, p.text, y0 + g.propY + k * g.rowH, x0 + g.pad, 160, null, p.bad));
+  if (c.radar){ const ri = await svgToImage(c.radar); ctx.drawImage(ri, x0 + W - g.pad - 150, y0 + g.propY, 150, 150); }
+  ctx.fillStyle = '#fafbfc'; rrect(ctx, x0 + g.pad, y0 + g.noteY, W - 2 * g.pad, g.noteH, 8); ctx.fill(); ctx.strokeStyle = '#eef0f3'; ctx.stroke();
+  ctx.textAlign = 'left'; ctx.font = `12.5px ${CFONT}`; ctx.fillStyle = c.note ? '#1d2430' : '#a0a6b0';
+  wrapLines(ctx, c.note || '备注：', W - 2 * g.pad - 16).slice(0, 3).forEach((l, k) => ctx.fillText(l, x0 + g.pad + 8, y0 + g.noteY + 13 + k * 19));
+  return g.H;
+}
+async function exportCardsPng(){
+  const C = cardModel(); if (!C.length) return toast('还没有选化合物');
+  const per = Math.min(3, C.length), gap = 24, pad = 28, sc = 2, title = $('title').value.trim();
+  const titleH = title ? 44 : 0, noteH = S.sourceNote ? 30 : 0;
+  const rows = []; for (let k = 0; k < C.length; k += per) rows.push(C.slice(k, k + per));
+  const rowHs = rows.map(r => Math.max(...r.map(c => cardGeom(c).H)));
+  const W = pad * 2 + per * CARD_W + (per - 1) * gap, H = pad + titleH + rowHs.reduce((a, b) => a + b, 0) + (rows.length - 1) * gap + noteH + pad;
+  const cv = document.createElement('canvas'); cv.width = W * sc; cv.height = H * sc;
+  const ctx = cv.getContext('2d'); ctx.scale(sc, sc); ctx.fillStyle = '#f6f7f9'; ctx.fillRect(0, 0, W, H);
+  if (title){ ctx.fillStyle = '#1d2430'; ctx.font = `600 20px ${CFONT}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(title, pad, pad + 14); }
+  let y = pad + titleH;
+  for (let ri = 0; ri < rows.length; ri++){
+    for (let k = 0; k < rows[ri].length; k++) await drawCardCanvas(ctx, rows[ri][k], pad + k * (CARD_W + gap), y);
+    y += rowHs[ri] + gap;
+  }
+  if (S.sourceNote){ ctx.textAlign = 'left'; ctx.fillStyle = '#6b7380'; ctx.font = `11px ${CFONT}`; ctx.fillText(S.sourceNote, pad, H - pad - 6, W - 2 * pad); }
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  await saveFile(fname('png'), blob);
+}
+async function exportCardsPptx(){
+  const C = cardModel(); if (!C.length) return toast('还没有选化合物');
+  const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE';
+  const SW = 13.33, SH = 7.5, Mg = 0.4, top = 1.0, per = S.cards.perSlide || 2, gapIn = 0.35;
+  const title = $('title').value.trim() || '重点化合物';
+  for (let k = 0; k < C.length; k += per){
+    const group = C.slice(k, k + per);
+    const slide = pptx.addSlide();
+    slide.addText(title + (C.length > per ? `  (${k / per + 1}/${Math.ceil(C.length / per)})` : ''), {x: Mg, y: 0.25, w: SW - 2 * Mg, h: 0.6, fontSize: 24, bold: true, color: '1D2430', fontFace: 'Arial'});
+    const maxH = Math.max(...group.map(c => cardGeom(c).H));
+    const regionW = (SW - 2 * Mg - (per - 1) * gapIn) / per;
+    const s = Math.min(regionW / (CARD_W / 96), (SH - top - 0.45) / (maxH / 96)) / 96;
+    const totalW = group.length * CARD_W * s + (group.length - 1) * gapIn;
+    let x0 = Mg + (SW - 2 * Mg - totalW) / 2;
+    for (const c of group){
+      const g = cardGeom(c), X = v => x0 + v * s, Y = v => top + v * s, Wd = v => v * s;
+      const fs = v => Math.max(6, v * s * 72);
+      slide.addShape(pptx.ShapeType.roundRect, {x: X(0), y: Y(0), w: Wd(CARD_W), h: Wd(g.H), fill: {color: 'FFFFFF'}, line: {color: 'D9DEE6', width: 1}, rectRadius: 0.1});
+      const head = [];
+      if (c.tag) head.push({text: c.tag + '  ', options: {color: '24507E', bold: true, fontSize: fs(12), highlight: 'E8F0FA'}});
+      head.push({text: c.rec.id, options: {color: '1D2430', bold: true, fontSize: fs(17)}});
+      slide.addText(head, {x: X(g.pad), y: Y(g.head - 2), w: Wd(CARD_W - 2 * g.pad), h: Wd(28), margin: 0, valign: 'middle', fontFace: 'Arial'});
+      slide.addImage({data: await svgToPng(c.svg, 328, 210, 3), x: X((CARD_W - 328) / 2), y: Y(g.svgY), w: Wd(328), h: Wd(210)});
+      const secTitle = (t, y) => slide.addText(t, {x: X(g.pad), y: Y(y), w: Wd(120), h: Wd(18), fontSize: fs(12), bold: true, color: '6B7380', margin: 0, fontFace: 'Arial'});
+      secTitle('活性', g.actTitle);
+      const actRows = [...c.act, ...c.derived].map(a => [{text: a.name, options: {color: '6B7380', align: 'left'}}, {text: a.text, options: {bold: true, align: 'right', fill: a.bg ? {color: a.bg.slice(1)} : undefined}}]);
+      if (actRows.length) slide.addTable(actRows, {x: X(g.pad), y: Y(g.actY), w: Wd(CARD_W - 2 * g.pad), colW: [Wd(CARD_W - 2 * g.pad) * 0.68, Wd(CARD_W - 2 * g.pad) * 0.32], rowH: Wd(g.rowH), fontSize: fs(12), fontFace: 'Arial', border: {type: 'none'}, margin: 0.02});
+      secTitle('性质', g.propTitle);
+      const propRows = c.props.map(p => [{text: p.name, options: {color: '6B7380', align: 'left'}}, {text: p.text, options: {bold: true, align: 'right', color: p.bad ? 'C8402F' : '1D2430'}}]);
+      if (propRows.length) slide.addTable(propRows, {x: X(g.pad), y: Y(g.propY), w: Wd(160), colW: [Wd(160) * 0.55, Wd(160) * 0.45], rowH: Wd(g.rowH), fontSize: fs(12), fontFace: 'Arial', border: {type: 'none'}, margin: 0.02});
+      if (c.radar) slide.addImage({data: await svgToPng(c.radar, 150, 150, 3), x: X(CARD_W - g.pad - 150), y: Y(g.propY), w: Wd(150), h: Wd(150)});
+      slide.addText(c.note || '备注：', {x: X(g.pad), y: Y(g.noteY), w: Wd(CARD_W - 2 * g.pad), h: Wd(g.noteH), fontSize: fs(12), color: c.note ? '1D2430' : 'A0A6B0', fill: {color: 'FAFBFC'}, line: {color: 'EEF0F3', width: 0.75}, valign: 'top', margin: 4, fontFace: 'Arial'});
+      x0 += Wd(CARD_W) + gapIn;
+    }
+    if (S.sourceNote) slide.addText(S.sourceNote, {x: Mg, y: SH - 0.4, w: SW - 2 * Mg - 1.4, h: 0.3, fontSize: 8, color: '6B7380'});
+    slide.addText('Chemva', {x: SW - 1.6, y: SH - 0.32, w: 1.3, h: 0.25, fontSize: 8, color: 'A0A6B0', align: 'right'});
+  }
+  const blob = await pptx.write({outputType: 'blob'});
+  await saveFile(fname('pptx'), blob);
+}
+$('btnPptx').onclick = () => busy('btnPptx', ({route: exportRoutePptx, scatter: exportScatterPptx, cards: exportCardsPptx})[S.view] || exportPptx);
+$('btnPng').onclick = () => busy('btnPng', ({route: exportRoutePng, scatter: exportScatterPng, cards: exportCardsPng})[S.view] || exportPng);
+</script>
+
+<script>
+"use strict";
+/* ======================= series comparison ======================= */
+S.cmp = {ids: [], init: false, thr: {}};
+(() => {
+  const cb = document.querySelector('#viewTabs button[data-v=compare]'), prev = cb.onclick;
+  cb.onclick = () => { if (['SAR 表', '先导化合物演变路线', '活性 vs 性质', '重点化合物'].includes($('title').value)) $('title').value = '系列对比'; prev(); };
+})();
+const _rerender3 = rerender;
+rerender = function(){ if (S.result && S.view === 'compare') return renderCompare(); return _rerender3(); };
+
+const ADME_RE = /(clint|hlm|rlm|mlm|microsom|sol|ksol|溶解|mdck|caco|papp|perm|efflux|\ber\b|ppb|unbound|\bfu\b|logd|herg|cyp|代谢|渗透)/i;
+function defaultThr(name){
+  const n = name.toLowerCase();
+  if (/(clint|hlm|rlm|mlm|microsom)/.test(n)){
+    if (/ml\/min\/kg/.test(n)) return /(rlm|rat)/.test(n) ? {dir: 'low', good: 55, bad: 250} : {dir: 'low', good: 20, bad: 100};
+    return {dir: 'low', good: 10, bad: 50};
+  }
+  if (/(efflux|\ber\b|b-a\/a-b)/.test(n)) return {dir: 'low', good: 2, bad: 5};
+  if (/(papp|perm|mdck|caco)/.test(n)) return {dir: 'high', good: 10, bad: 2};
+  if (/(ksol|sol|溶解)/.test(n)) return /(µm|um\b|μm|\(um\))/.test(n) ? {dir: 'high', good: 100, bad: 10} : {dir: 'high', good: 60, bad: 10};
+  if (/(unbound|\bfu\b)/.test(n)) return {dir: 'high', good: 10, bad: 1};
+  if (/ppb/.test(n) && /bound/.test(n)) return {dir: 'low', good: 90, bad: 99};
+  if (/logd/.test(n)) return {dir: 'range', good: [1, 3], bad: [0, 4]};
+  if (/herg/.test(n)) return {dir: 'high', good: 30, bad: 10};
+  return null;
+}
+const PROP_THR = {MW: {dir: 'low', good: 450, bad: 500}, cLogP: {dir: 'low', good: 3, bad: 5}, TPSA: {dir: 'range', good: [40, 90], bad: [20, 140]}, HBD: {dir: 'low', good: 3, bad: 5}, HBA: {dir: 'low', good: 7, bad: 10}, RotB: {dir: 'low', good: 7, bad: 10}};
+function thrFor(row){ return S.cmp.thr[row.key] !== undefined ? S.cmp.thr[row.key] : row.thr0; }
+function judge(v, t){
+  if (v == null || !t) return null;
+  if (t.dir === 'low') return v <= t.good ? 'g' : v >= t.bad ? 'b' : 'm';
+  if (t.dir === 'high') return v >= t.good ? 'g' : v <= t.bad ? 'b' : 'm';
+  if (t.dir === 'range') return (v >= t.good[0] && v <= t.good[1]) ? 'g' : (v < t.bad[0] || v > t.bad[1]) ? 'b' : 'm';
+  return null;
+}
+const JCOL = {g: '#9fd8b3', m: '#fff1a8', b: '#f4b2a6'};
+function desir(v, t, row, vals){
+  if (v == null) return null;
+  const L = x => Math.log10(Math.max(x, 1e-9));
+  if (t){
+    if (t.dir === 'range'){
+      const [g0, g1] = t.good, [b0, b1] = t.bad;
+      if (v >= g0 && v <= g1) return 1; if (v <= b0 || v >= b1) return 0;
+      return v < g0 ? (v - b0) / (g0 - b0) : (b1 - v) / (b1 - g1);
+    }
+    const useLog = v > 0 && t.good > 0 && t.bad > 0 && Math.max(t.good, t.bad) / Math.min(t.good, t.bad) >= 4;
+    const f = useLog ? L : (x => x), a = f(t.good), b = f(t.bad), x = f(v);
+    const s = (x - b) / (a - b); return Math.max(0, Math.min(1, s));
+  }
+  if (!row.dir || row.dir === 'none') return null;
+  const vs = vals.filter(x => x != null); if (vs.length < 2) return null;
+  const useLog = vs.every(x => x > 0) && Math.max(...vs) / Math.min(...vs) >= 10;
+  const f = useLog ? L : (x => x), lo = Math.min(...vs.map(f)), hi = Math.max(...vs.map(f));
+  if (hi === lo) return 0.5;
+  const s = (f(v) - lo) / (hi - lo); return row.dir === 'low' ? 1 - s : s;
+}
+function cmpRows(){
+  const rows = [];
+  const dcols = S.cols.filter(c => c.role === 'data');
+  dcols.forEach(c => {
+    const adme = ADME_RE.test(c.name);
+    const t0 = adme ? defaultThr(c.name) : null;
+    rows.push({key: 'd:' + c.idx, label: c.name.replace(/selectivity/i, '选择性'), group: adme ? 'ADME' : '活性', dir: t0 ? (t0.dir === 'range' ? 'none' : t0.dir) : c.dir, thr0: t0, kind: /logd/i.test(c.name) ? 'diff' : 'fold', col: c,
+      get: r => { const p = parseNum(r.raw[c.idx]); return {text: r.raw[c.idx] || '—', v: p ? p.v : null}; }});
+  });
+  const pc = primaryCol(), pp = pc ? potencyP(pc) : null;
+  if (pp){
+    const pv = r => { const v = numVal(r, pc); return v && v > 0 ? pp.off - Math.log10(v) : null; };
+    rows.push({key: 'lipe', label: `LipE（${pp.label}）`, group: '活性', dir: 'high', thr0: {dir: 'high', good: 5, bad: 3}, kind: 'diff', get: r => { const p = pv(r); const v = p == null || !r.desc ? null : p - r.desc.CrippenClogP; return {text: v == null ? '—' : v.toFixed(2), v}; }});
+  }
+  LIMITS.forEach(L => rows.push({key: 'p:' + L.k, label: L.label, group: '理化（计算）', dir: PROP_THR[L.k].dir === 'range' ? 'none' : PROP_THR[L.k].dir, thr0: PROP_THR[L.k], kind: 'diff',
+    get: r => { const v = r.desc ? L.get(r.desc) : null; return {text: v == null ? '—' : L.fmt(v), v}; }}));
+  const order = {'活性': 0, 'ADME': 1, '理化（计算）': 2};
+  return rows.sort((a, b) => order[a.group] - order[b.group]);
+}
+function deltaText(row, v, ref){
+  if (v == null || ref == null) return null;
+  if (row.kind === 'fold' && v > 0 && ref > 0){
+    const r = v / ref; if (Math.abs(Math.log10(r)) < 0.06) return {t: '≈', c: ''};
+    const better = row.dir === 'low' ? r < 1 : row.dir === 'high' ? r > 1 : null;
+    const f = r >= 1 ? r : 1 / r;
+    return {t: `${r >= 1 ? '↑' : '↓'}${f < 10 ? f.toFixed(1) : Math.round(f)}×`, c: better == null ? '' : better ? 'up' : 'down'};
+  }
+  const d = v - ref; if (Math.abs(d) < 1e-9) return {t: '=', c: ''};
+  const better = row.dir === 'low' ? d < 0 : row.dir === 'high' ? d > 0 : null;
+  const digits = Math.abs(d) >= 10 ? 0 : Math.abs(d) >= 1 ? 1 : 2;
+  return {t: `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(digits)}`, c: better == null ? '' : better ? 'up' : 'down'};
+}
+function defaultCmp(){
+  if (S.cards.ids.length >= 2) return S.cards.ids.slice(0, 5);
+  if (S.route.ids.length >= 2) return S.route.ids.slice(0, 5);
+  return S.result.valid.slice(0, 5).map(r => r.i);
+}
+const cmpSvgCache = new Map();
+function cmpSvg(rec){
+  const key = rec.i + '|' + (S.result.templateSmi || '');
+  if (cmpSvgCache.has(key)) return cmpSvgCache.get(key);
+  const m = RD.get_mol(rec.smi);
+  if (S.result.templateSmi){ const t = RD.get_mol(S.result.templateSmi); if (t){ try { t.set_new_coords(true); m.generate_aligned_coords(t, JSON.stringify({useCoordGen: true, allowRGroups: true, acceptFailure: true})); } catch(e){} t.delete(); } }
+  else { try { m.set_new_coords(true); m.straighten_depiction(); } catch(e){} }
+  const svg = m.get_svg_with_highlights(JSON.stringify({...DRAW_BASE, width: 200, height: 140, fixedBondLength: 17}));
+  m.delete(); cmpSvgCache.set(key, svg); return svg;
+}
+const CMP_COLORS = ['#3d6fa8', '#d9822b', '#2e9e5b', '#a2479b', '#c8402f', '#5b6b7f'];
+function cmpModel(){
+  buildTable();
+  if (!S.cmp.init){ S.cmp.ids = defaultCmp(); S.cmp.init = true; }
+  const ok = new Set(S.result.valid.map(r => r.i)); S.cmp.ids = S.cmp.ids.filter(i => ok.has(i));
+  const recs = S.cmp.ids.map(recByI);
+  const rows = cmpRows().filter(row => recs.some(r => row.get(r).v != null));
+  const ref = recs[0];
+  const cells = rows.map(row => {
+    const vals = recs.map(r => row.get(r).v), t = thrFor(row), refV = ref ? row.get(ref).v : null;
+    return recs.map((r, k) => {
+      const g = row.get(r), j = judge(g.v, t);
+      const bg = j ? JCOL[j] : (row.col ? colorFor(row.col, r.raw[row.col.idx]) : null);
+      return {text: g.text, v: g.v, bg, delta: k === 0 ? null : deltaText(row, g.v, refV), score: desir(g.v, t, row, vals)};
+    });
+  });
+  // radar axes: rows with scores for >= 2 compounds; prefer ADME, then activity, then a few props
+  const pri = r => r.group === 'ADME' ? 0 : r.group === '活性' ? 1 : (['cLogP', 'MW', 'TPSA'].includes(r.label) ? 2 : 9);
+  const axes = rows.map((row, i) => ({row, i})).filter(({i}) => cells[i].filter(c => c.score != null).length >= 2 && pri(rows[i]) < 9)
+    .sort((a, b) => pri(a.row) - pri(b.row)).slice(0, 8);
+  return {recs, rows, cells, axes};
+}
+function cmpRadarSvg(M, size){
+  const n = M.axes.length; if (n < 3) return '';
+  const cx = size / 2, cy = size / 2 + 6, R = size / 2 - 78;
+  const ang = k => -Math.PI / 2 + k * 2 * Math.PI / n, pt = (k, f) => [cx + Math.cos(ang(k)) * R * f, cy + Math.sin(ang(k)) * R * f];
+  let g = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 10}" viewBox="0 0 ${size} ${size + 10}" style="font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',Arial,sans-serif"><rect width="100%" height="100%" fill="#fff"/>`;
+  [0.25, 0.5, 0.75, 1].forEach(f => g += `<polygon points="${M.axes.map((_, k) => pt(k, f).join(',')).join(' ')}" fill="${f === 1 ? '#fbfcfd' : 'none'}" stroke="#e3e6eb"/>`);
+  M.axes.forEach((a, k) => {
+    const [x, y] = pt(k, 1); g += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e3e6eb"/>`;
+    const [lx, ly] = pt(k, 1.16), anchor = Math.abs(lx - cx) < 8 ? 'middle' : lx > cx ? 'start' : 'end';
+    const lab = a.row.label.replace(/MDR1-MDCK efflux ratio/i, 'MDCK ER').replace(/Solubility/i, 'Sol').replace(/\s*\([^)]*\)/g, '').replace(/（[^）]*）/g, '').slice(0, 16);
+    g += `<text x="${lx}" y="${ly + 4}" font-size="11" fill="#4a5361" text-anchor="${anchor}">${esc(lab)}</text>`;
+  });
+  M.recs.forEach((r, ci) => {
+    const pts = M.axes.map((a, k) => { const s = M.cells[a.i][ci].score; return pt(k, s == null ? 0 : Math.max(0.03, s)); });
+    const col = CMP_COLORS[ci % CMP_COLORS.length];
+    g += `<polygon points="${pts.map(p => p.join(',')).join(' ')}" fill="${col}" fill-opacity="0.10" stroke="${col}" stroke-width="2"/>`;
+    pts.forEach(p => g += `<circle cx="${p[0]}" cy="${p[1]}" r="2.6" fill="${col}"/>`);
+  });
+  g += `<text x="${cx}" y="${size + 4}" font-size="10.5" fill="#8a929e" text-anchor="middle">外圈 = 更理想（按阈值或系列内相对值换算）</text>`;
+  return g + `</svg>`;
+}
+function renderCompare(){
+  const R = S.result, M = cmpModel(), inSet = new Set(S.cmp.ids);
+  let h = `<div class="route-bar"><span style="color:var(--muted)">对比：</span>`;
+  M.recs.forEach((r, k) => h += `<span class="chip"><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${CMP_COLORS[k % 6]};margin-right:3px"></i>${esc(r.id)}${k === 0 ? ' <small style="color:var(--muted)">参照</small>' : ''}<button data-act="left" data-k="${k}" ${k === 0 ? 'disabled' : ''} title="前移（第一个是参照）">‹</button><button data-act="right" data-k="${k}" ${k === M.recs.length - 1 ? 'disabled' : ''}>›</button><button data-act="del" data-k="${k}">✕</button></span>`);
+  h += `<select id="cmpAdd"><option value="">＋ 添加化合物</option>${R.valid.filter(r => !inSet.has(r.i)).map(r => `<option value="${r.i}">${esc(r.id)}</option>`).join('')}</select>
+    <button id="cmpAll" ${R.valid.length <= 8 ? '' : 'disabled'} title="最多 8 个">全部</button></div>
+    <div class="hint" style="margin:-4px 0 10px">第一个化合物是参照，其他格子里的 ↑↓ 是相对参照的变化（绿 = 变好）。ADME 和理化性质按参考阈值标 绿 / 黄 / 红，阈值可以在下面改。</div>`;
+  if (M.recs.length < 2){ out(h + '<div class="empty">至少选 2 个化合物来对比。</div>'); bindCmp(); return; }
+  h += `<div class="tablewrap" style="max-height:none"><table class="sar cmp"><thead><tr><th style="text-align:left;min-width:150px">参数</th>`;
+  M.recs.forEach((r, k) => h += `<th style="min-width:118px;cursor:default"><div style="display:flex;align-items:center;justify-content:center;gap:6px"><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${CMP_COLORS[k % 6]}"></i>${esc(r.id)}${k === 0 ? '<small style="color:var(--muted);font-weight:400">（参照）</small>' : ''}</div><div style="font-weight:400">${cmpSvg(r)}</div></th>`);
+  h += `</tr></thead><tbody>`;
+  let lastG = null;
+  M.rows.forEach((row, i) => {
+    if (row.group !== lastG){ h += `<tr><td colspan="${M.recs.length + 1}" style="text-align:left;background:#f7f8fa;font-weight:600;color:var(--muted);font-size:12px">${row.group}</td></tr>`; lastG = row.group; }
+    const t = thrFor(row);
+    const tdesc = !t ? '' : t.dir === 'range' ? `${t.good[0]}–${t.good[1]}` : (t.dir === 'low' ? `≤${t.good} 好 / ≥${t.bad} 差` : `≥${t.good} 好 / ≤${t.bad} 差`);
+    h += `<tr><td style="text-align:left"><div>${esc(row.label)}</div>${tdesc ? `<div style="font-size:11px;color:var(--muted)">${esc(tdesc)}</div>` : ''}</td>`;
+    M.cells[i].forEach(c => h += `<td class="num" style="${c.bg ? 'background:' + c.bg : ''}"><b>${esc(c.text)}</b>${c.delta ? ` <span class="${c.delta.c}" style="font-size:11.5px">${esc(c.delta.t)}</span>` : ''}</td>`);
+    h += `</tr>`;
+  });
+  h += `</tbody></table></div>`;
+  const radar = cmpRadarSvg(M, 440);
+  if (radar) h += `<div style="display:flex;justify-content:center;margin-top:14px">${radar}</div>`;
+  // thresholds editor
+  const tr = M.rows.filter(r => thrFor(r) && thrFor(r).dir !== 'range');
+  h += `<details style="margin-top:10px"><summary style="cursor:pointer;color:var(--accent)">阈值设置（参考值，可按你们项目改）</summary><div style="display:grid;grid-template-columns:1fr 70px 90px 90px;gap:6px 8px;align-items:center;margin-top:8px;font-size:12.5px">
+    <b>参数</b><b>方向</b><b>好</b><b>差</b>${tr.map(r => { const t = thrFor(r); return `<span>${esc(r.label)}</span><span>${t.dir === 'low' ? '越低越好' : '越高越好'}</span><input type="number" step="any" data-k="${esc(r.key)}" data-f="good" value="${t.good}"><input type="number" step="any" data-k="${esc(r.key)}" data-f="bad" value="${t.bad}">`; }).join('')}
+    </div><div class="hint">默认值：微粒体 CLint（µL/min/mg）≤10 好 / ≥50 差；按 mL/min/kg 给的，人 ≤20 / ≥100、大鼠 ≤55 / ≥250；efflux ratio ≤2 / ≥5；溶解度 ≥60 / ≤10 µg/mL；游离分数 ≥10% / ≤1%；LogD 1–3。这些只是常见经验值，不同项目差别很大。</div></details>`;
+  if (S.sourceNote) h += `<div class="legend" style="margin-top:8px">${esc(S.sourceNote)}</div>`;
+  out(h); bindCmp();
+  ['btnPptx','btnPng'].forEach(id => $(id).disabled = false);
+}
+function bindCmp(){
+  document.querySelectorAll('.route-bar .chip button').forEach(b => b.onclick = () => {
+    const k = +b.dataset.k, ids = S.cmp.ids;
+    if (b.dataset.act === 'del') ids.splice(k, 1);
+    if (b.dataset.act === 'left' && k > 0) [ids[k - 1], ids[k]] = [ids[k], ids[k - 1]];
+    if (b.dataset.act === 'right' && k < ids.length - 1) [ids[k + 1], ids[k]] = [ids[k], ids[k + 1]];
+    renderCompare();
+  });
+  const add = $('cmpAdd'); if (add) add.onchange = e => { if (e.target.value !== ''){ S.cmp.ids.push(+e.target.value); renderCompare(); } };
+  const all = $('cmpAll'); if (all) all.onclick = () => { S.cmp.ids = S.result.valid.slice(0, 8).map(r => r.i); renderCompare(); };
+  document.querySelectorAll('details input[data-k]').forEach(inp => inp.onchange = () => {
+    const row = cmpRows().find(r => r.key === inp.dataset.k); if (!row) return;
+    const t = {...thrFor(row)}; t[inp.dataset.f] = parseFloat(inp.value); S.cmp.thr[row.key] = t;
+    const open = true; renderCompare(); if (open) document.querySelector('details').open = true;
+  });
+}
+/* ---- exports ---- */
+async function exportCmpPptx(){
+  const M = cmpModel(); if (M.recs.length < 2) return toast('至少选 2 个化合物');
+  const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE';
+  const SW = 13.33, SH = 7.5, Mg = 0.4, title = $('title').value.trim() || '系列对比';
+  const nC = M.recs.length, radar = cmpRadarSvg(M, 440);
+  const radarW = radar ? 3.3 : 0;
+  const tableW = SW - 2 * Mg - (radar ? radarW + 0.2 : 0);
+  const labelW = 1.7, colW = (tableW - labelW) / nC;
+  const nRows = M.rows.length + new Set(M.rows.map(r => r.group)).size;
+  const structH = Math.min(1.25, colW * 0.7), top = 0.95;
+  const rowH = Math.max(0.2, Math.min(0.32, (SH - top - 0.5 - structH - 0.28) / nRows));
+  const fs = rowH < 0.24 ? 8 : 9.5;
+  const slide = pptx.addSlide();
+  slide.addText(title, {x: Mg, y: 0.25, w: SW - 2 * Mg, h: 0.55, fontSize: 22, bold: true, color: '1D2430', fontFace: 'Arial'});
+  const head = [{text: '参数', options: {bold: true, align: 'left', fill: {color: 'F3F5F8'}}}, ...M.recs.map((r, k) => ({text: r.id + (k === 0 ? '（参照）' : ''), options: {bold: true, align: 'center', fill: {color: 'F3F5F8'}, color: CMP_COLORS[k % 6].slice(1)}}))];
+  const imgRow = [{text: '', options: {}}, ...M.recs.map(() => ({text: '', options: {}}))];
+  const body = []; let lastG = null; const rowHs = [0.3, structH];
+  M.rows.forEach((row, i) => {
+    if (row.group !== lastG){ body.push([{text: row.group, options: {bold: true, color: '6B7380', fill: {color: 'F7F8FA'}, colspan: nC + 1, align: 'left'}}]); rowHs.push(rowH); lastG = row.group; }
+    body.push([{text: row.label, options: {align: 'left', color: '1D2430'}}, ...M.cells[i].map(c => ({text: [{text: c.text, options: {bold: true}}, ...(c.delta ? [{text: '  ' + c.delta.t, options: {color: c.delta.c === 'up' ? '1F7A45' : c.delta.c === 'down' ? 'B4382B' : '6B7380', fontSize: fs - 1.5}}] : [])], options: {align: 'center', fill: c.bg ? {color: c.bg.slice(1)} : undefined}}))]);
+    rowHs.push(rowH);
+  });
+  slide.addTable([head, imgRow, ...body], {x: Mg, y: top, colW: [labelW, ...M.recs.map(() => colW)], rowH: rowHs, fontSize: fs, fontFace: 'Arial', border: {type: 'solid', pt: 0.5, color: 'E6E8EC'}, margin: 0.03, autoPage: false});
+  for (let k = 0; k < nC; k++){
+    const svg = cmpSvg(M.recs[k]); const png = await svgToPng(svg, 200, 140, 3);
+    const h = structH - 0.06, w = Math.min(colW - 0.06, h * 200 / 140);
+    slide.addImage({data: png, x: Mg + labelW + k * colW + (colW - w) / 2, y: top + 0.3 + 0.03, w, h: w * 140 / 200});
+  }
+  if (radar){ const png = await svgToPng(radar, 440, 450, 3); slide.addImage({data: png, x: SW - Mg - radarW, y: top + 0.2, w: radarW, h: radarW * 450 / 440}); }
+  if (S.sourceNote) slide.addText(S.sourceNote, {x: Mg, y: SH - 0.42, w: SW - 2 * Mg - 1.4, h: 0.32, fontSize: 8, color: '6B7380'});
+  slide.addText('Chemva', {x: SW - 1.6, y: SH - 0.32, w: 1.3, h: 0.25, fontSize: 8, color: 'A0A6B0', align: 'right'});
+  const blob = await pptx.write({outputType: 'blob'});
+  await saveFile(fname('pptx'), blob);
+}
+async function exportCmpPng(){
+  const M = cmpModel(); if (M.recs.length < 2) return toast('至少选 2 个化合物');
+  const sc = 2, pad = 28, labelW = 190, colW = 170, headH = 30, structH = 140, rowH = 36, gH = 26;
+  const title = $('title').value.trim(), titleH = title ? 44 : 0;
+  const groups = new Set(M.rows.map(r => r.group)).size;
+  const tableW = labelW + colW * M.recs.length, tableH = headH + structH + M.rows.length * rowH + groups * gH;
+  const radar = cmpRadarSvg(M, 440), rW = radar ? 460 : 0;
+  const noteH = S.sourceNote ? 30 : 0;
+  const W = pad * 2 + tableW + rW, H = pad + titleH + Math.max(tableH, radar ? 460 : 0) + noteH + pad;
+  const cv = document.createElement('canvas'); cv.width = W * sc; cv.height = H * sc;
+  const ctx = cv.getContext('2d'); ctx.scale(sc, sc); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.textBaseline = 'middle';
+  if (title){ ctx.fillStyle = '#1d2430'; ctx.font = `600 20px ${CFONT}`; ctx.textAlign = 'left'; ctx.fillText(title, pad, pad + 14); }
+  const x0 = pad; let y = pad + titleH;
+  ctx.fillStyle = '#f3f5f8'; ctx.fillRect(x0, y, tableW, headH + structH);
+  ctx.font = `600 12.5px ${CFONT}`; ctx.fillStyle = '#1d2430'; ctx.textAlign = 'left'; ctx.fillText('参数', x0 + 10, y + headH / 2);
+  for (let k = 0; k < M.recs.length; k++){
+    const cx = x0 + labelW + k * colW;
+    ctx.fillStyle = CMP_COLORS[k % 6]; ctx.beginPath(); ctx.arc(cx + 14, y + headH / 2, 5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#1d2430'; ctx.textAlign = 'left'; ctx.font = `600 12.5px ${CFONT}`; ctx.fillText(M.recs[k].id + (k === 0 ? '（参照）' : ''), cx + 24, y + headH / 2, colW - 30);
+    const img = await svgToImage(cmpSvg(M.recs[k])); ctx.fillStyle = '#fff'; ctx.fillRect(cx + 4, y + headH, colW - 8, structH - 4); ctx.drawImage(img, cx + (colW - 160) / 2, y + headH + 4, 160, 112);
+  }
+  y += headH + structH;
+  let lastG = null;
+  M.rows.forEach((row, i) => {
+    if (row.group !== lastG){ ctx.fillStyle = '#f7f8fa'; ctx.fillRect(x0, y, tableW, gH); ctx.fillStyle = '#6b7380'; ctx.font = `600 12px ${CFONT}`; ctx.textAlign = 'left'; ctx.fillText(row.group, x0 + 10, y + gH / 2); y += gH; lastG = row.group; }
+    ctx.fillStyle = '#1d2430'; ctx.font = `12.5px ${CFONT}`; ctx.textAlign = 'left'; ctx.fillText(row.label, x0 + 10, y + rowH / 2, labelW - 16);
+    M.cells[i].forEach((c, k) => {
+      const cx = x0 + labelW + k * colW;
+      if (c.bg){ ctx.fillStyle = c.bg; ctx.fillRect(cx, y, colW, rowH); }
+      ctx.textAlign = 'center'; ctx.fillStyle = '#1d2430'; ctx.font = `600 13px ${CFONT}`;
+      const dt = c.delta ? c.delta.t : '';
+      ctx.fillText(c.text, cx + colW / 2 - (dt ? 18 : 0), y + rowH / 2, colW - 50);
+      if (dt){ ctx.font = `11.5px ${CFONT}`; ctx.fillStyle = c.delta.c === 'up' ? '#1f7a45' : c.delta.c === 'down' ? '#b4382b' : '#6b7380'; ctx.textAlign = 'left'; ctx.fillText(dt, cx + colW / 2 + 6, y + rowH / 2); }
+    });
+    ctx.strokeStyle = '#e6e8ec'; ctx.beginPath(); ctx.moveTo(x0, y + rowH + .5); ctx.lineTo(x0 + tableW, y + rowH + .5); ctx.stroke();
+    y += rowH;
+  });
+  if (radar){ const img = await svgToImage(radar); ctx.drawImage(img, pad + tableW + 20, pad + titleH, 440, 450); }
+  if (S.sourceNote){ ctx.textAlign = 'left'; ctx.fillStyle = '#6b7380'; ctx.font = `11px ${CFONT}`; ctx.fillText(S.sourceNote, pad, H - pad - 6, W - 2 * pad); }
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  await saveFile(fname('png'), blob);
+}
+$('btnPptx').onclick = () => busy('btnPptx', ({route: exportRoutePptx, scatter: exportScatterPptx, cards: exportCardsPptx, compare: exportCmpPptx})[S.view] || exportPptx);
+$('btnPng').onclick = () => busy('btnPng', ({route: exportRoutePng, scatter: exportScatterPng, cards: exportCardsPng, compare: exportCmpPng})[S.view] || exportPng);
+</script>
+
+</body>
+</html>
