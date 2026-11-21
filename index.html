@@ -2108,29 +2108,37 @@ function chRenderDocs(capped, total){
   const t = CH.target;
   chMsg(`${esc(t.pref_name)}：${CH.acts.length} 条活性记录${capped ? `（共 ${total} 条，只读了前 ${CH.acts.length} 条）` : ''}，${CH.docs.length} 篇文献/专利有 ≥5 个化合物。点一篇载入。`);
   const sortSel = `<select id="chSort"><option value="n">按化合物数</option><option value="year">按年份（新→旧）</option><option value="p">按最高 pChEMBL</option></select>`;
+  const kindSel = `<select id="chKind"><option value="all">论文 + 专利</option><option value="paper">只看论文</option><option value="patent">只看专利</option></select>`;
   const filt = `<input type="text" id="chFilter" placeholder="筛选：标题 / 作者 / 期刊" style="flex:1;min-width:120px">`;
-  $('chList').innerHTML = `<div class="chhead" style="display:flex;gap:6px;align-items:center">${sortSel}${filt}</div><div id="chDocs"></div>`;
+  $('chList').innerHTML = `<div class="chhead" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${sortSel}${kindSel}${filt}</div><div id="chDocs"></div>`;
   const draw = () => {
     const f = ($('chFilter').value || '').toLowerCase(), s = $('chSort').value;
-    let docs = CH.docs.filter(d => !f || [d.title, d.authors, d.journal].join(' ').toLowerCase().includes(f));
+    const kind = $('chKind').value, isPatent = d => d.doc_type === 'PATENT' || !d.journal;
+    let docs = CH.docs.filter(d => (!f || [d.title, d.authors, d.journal].join(' ').toLowerCase().includes(f)) && (kind === 'all' || (kind === 'patent') === isPatent(d)));
     docs = docs.slice().sort((a, b) => s === 'year' ? (b.year || 0) - (a.year || 0) : s === 'p' ? Math.max(...b.p) - Math.max(...a.p) : b.mols.size - a.mols.size);
     $('chDocs').innerHTML = docs.slice(0, 60).map(d => {
       const pmin = Math.min(...d.p), pmax = Math.max(...d.p);
       const types = Object.entries(d.types).sort((a, b) => b[1] - a[1]).slice(0, 2).map(x => x[0]).join(' / ');
-      const isPat = d.doc_type === 'PATENT' || (!d.journal && /^CHEMBL/.test(d.id) && !d.title);
+      const isPat = d.doc_type === 'PATENT' || !d.journal;
       return `<button class="chitem" data-id="${esc(d.id)}"><b>${esc(d.title || d.id)}</b>
-        <span>${esc([d.journal || (isPat ? '专利/其他' : ''), d.year, d.volume && d.first_page ? `${d.volume}, ${d.first_page}` : ''].filter(Boolean).join(' · '))}</span>
+        <span>${esc([d.journal || (isPat ? '专利' : ''), d.year, d.volume && d.first_page ? `${d.volume}, ${d.first_page}` : ''].filter(Boolean).join(' · '))}</span>
         <span>${d.mols.size} 个化合物 · ${esc(types)} · pChEMBL ${pmin.toFixed(1)}–${pmax.toFixed(1)}</span></button>`;
     }).join('') || '<div class="hint">没有匹配的文献。</div>';
     $('chDocs').querySelectorAll('.chitem').forEach(b => b.onclick = () => chLoadDoc(CH.docs.find(d => d.id === b.dataset.id)));
   };
-  $('chSort').onchange = draw; $('chFilter').oninput = draw; draw();
+  $('chSort').onchange = draw; $('chKind').onchange = draw; $('chFilter').oninput = draw; draw();
 }
 function median(a){ const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
 function fmtNum(v){ if (v == null || !isFinite(v)) return ''; const a = Math.abs(v); return a >= 1000 ? String(Math.round(v)) : a >= 100 ? v.toFixed(0) : a >= 10 ? (+v.toPrecision(3)).toString() : (+v.toPrecision(2)).toString(); }
 async function chLoadDoc(d){
   if (CH.busy || !d) return; CH.busy = true;
   try {
+    if (!d.title){
+      try {
+        const js = await chGet('document.json', {document_chembl_id: d.id, only: 'document_chembl_id,title,authors,journal,year,volume,first_page,doi,doc_type'});
+        const x = (js.documents || [])[0]; if (x) Object.assign(d, {title: x.title, authors: x.authors, journal: x.journal || d.journal, year: x.year || d.year, volume: x.volume, first_page: x.first_page, doi: x.doi, doc_type: x.doc_type});
+      } catch(e){ console.warn('doc detail', e); }
+    }
     const acts = []; let next = null;
     const only = 'molecule_chembl_id,canonical_smiles,target_chembl_id,target_pref_name,target_organism,standard_type,standard_relation,standard_value,standard_units,pchembl_value,assay_type,assay_chembl_id,data_validity_comment';
     do {
@@ -2152,7 +2160,7 @@ async function chLoadDoc(d){
         val = Math.pow(10, 9 - parseFloat(a.pchembl_value));
       } else if ((a.assay_type === 'A' || a.assay_type === 'P') && a.standard_value != null && a.standard_type && !/^ratio/i.test(a.standard_type)){
         const u = a.standard_units ? ` (${a.standard_units})` : '';
-        const sys = shortTarget(a.target_pref_name, a.target_organism);
+        const sys = shortTarget(a.target_pref_name);
         key = `a|${sys}|${a.standard_type}|${a.standard_units || ''}`; label = `${sys ? sys + ' ' : ''}${a.standard_type}${u}`; kind = 'adme';
         val = parseFloat(a.standard_value); rel = a.standard_relation && a.standard_relation !== '=' ? a.standard_relation.replace(/'/g, '') : '';
         if (isNaN(val)) return;
