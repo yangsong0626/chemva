@@ -119,6 +119,12 @@ table.sar td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .cnote:focus,.ctag:focus{border-color:#e0c48a;background:#fffaf0}
 table.cmp th svg{width:128px;height:auto}
 table.cmp th{white-space:normal}
+.chlist{max-height:420px;overflow:auto;margin-top:6px}
+.chhead{font-size:12px;color:var(--muted);margin:6px 0 4px}
+.chitem{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin:5px 0;background:#fff;font-size:12.5px;line-height:1.4}
+.chitem:hover{border-color:#9db8d6;background:#f7faff}
+.chitem b{display:block;font-weight:600;color:var(--ink)}
+.chitem span{display:block;color:var(--muted);font-size:11.5px}
 footer{padding:4px 22px 24px;color:var(--muted);font-size:12px}
 </style>
 </head>
@@ -131,6 +137,14 @@ footer{padding:4px 22px 24px;color:var(--muted);font-size:12px}
 
 <div class="wrap">
   <aside>
+    <div class="card" id="chCard">
+      <h2><b>★</b>从 ChEMBL 载入</h2>
+      <div class="row" style="margin-top:0"><input type="text" id="chQ" placeholder="靶点：JAK1、BTK、KRAS…" style="flex:1"><button class="primary" id="chGo">搜索</button></div>
+      <div class="hint">选靶点 → 选一篇文献（一篇基本就是一个药化系列）→ 活性和 ADME 自动载入下面所有视图。只把靶点名发给 ChEMBL，你粘贴的数据不会上传。</div>
+      <div id="chMsg"></div>
+      <div id="chList" class="chlist"></div>
+    </div>
+
     <div class="card">
       <h2><b>1</b>粘贴数据</h2>
       <textarea id="input" spellcheck="false" placeholder="从 Excel 直接复制粘贴（带表头）&#10;ID	SMILES	IC50 (nM)	...&#10;cmpd-1	COc1cc2ncnc(...)...	12"></textarea>
@@ -379,7 +393,7 @@ function run(){
   const isEx = $('input').value.trim() === EXAMPLE.trim(), isEx2 = $('input').value.trim() === EXAMPLE2.trim();
   if (!isEx && $('title').value === EXAMPLE_TITLE) $('title').value = 'SAR 表';
   if (!isEx2 && $('title').value === EXAMPLE2_TITLE) $('title').value = 'SAR 表';
-  S.sourceNote = isEx ? EXAMPLE_SOURCE : isEx2 ? EXAMPLE2_SOURCE : '';
+  S.sourceNote = isEx ? EXAMPLE_SOURCE : isEx2 ? EXAMPLE2_SOURCE : (S.pendingSource && S.pendingSource.text === $('input').value ? S.pendingSource.note : '');
   renderCols();
   $('colsCard').hidden = false; $('optsCard').hidden = false;
   compute();
@@ -1997,6 +2011,176 @@ async function exportCmpPng(){
 }
 $('btnPptx').onclick = () => busy('btnPptx', ({route: exportRoutePptx, scatter: exportScatterPptx, cards: exportCardsPptx, compare: exportCmpPptx})[S.view] || exportPptx);
 $('btnPng').onclick = () => busy('btnPng', ({route: exportRoutePng, scatter: exportScatterPng, cards: exportCardsPng, compare: exportCmpPng})[S.view] || exportPng);
+</script>
+
+<script>
+"use strict";
+/* ======================= ChEMBL loader ======================= */
+const CHEMBL = 'https://www.ebi.ac.uk/chembl/api/data';
+const CH = {targets: [], target: null, acts: [], docs: [], busy: false};
+function chMsg(html, kind = 'info'){ $('chMsg').innerHTML = html ? `<div class="msg ${kind}">${html}</div>` : ''; }
+async function chGet(path, params){
+  const qs = new URLSearchParams({format: 'json', ...params}).toString();
+  const url = path.startsWith('http') ? path : (path.startsWith('/chembl/') ? 'https://www.ebi.ac.uk' + path : `${CHEMBL}/${path}?${qs}`);
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 45000);
+  try {
+    const r = await fetch(url, {signal: ctl.signal, headers: {Accept: 'application/json'}});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+function chNetErr(e){
+  console.warn(e);
+  const inClaude = /claude\.ai|claudeusercontent|anthropic/.test(location.host) || location.protocol === 'blob:';
+  if (inClaude) return chMsg('Claude 里的这个页面不允许访问外部网站，没法连 ChEMBL。请用 GitHub Pages 版：<a href="https://yangsong0626.github.io/chemva/" target="_blank">yangsong0626.github.io/chemva</a>', 'warn');
+  chMsg(`连不上 ChEMBL（${esc(e.message || e)}）。ChEMBL 偶尔会慢或维护，稍后再试。`, 'warn');
+}
+function shortTarget(name, org){
+  let n = (name || '').trim();
+  const toks = n.split(/\s+/), last = toks[toks.length - 1] || '';
+  if (toks.length > 1 && /^[A-Z0-9][A-Z0-9-]{1,9}$/.test(last) && /\d|[A-Z]{3,}/.test(last)) n = last;
+  else if (n.length > 22) n = n.slice(0, 21) + '…';
+  if (org && org !== 'Homo sapiens'){ const sp = {'Rattus norvegicus': 'rat', 'Mus musculus': 'mouse'}[org] || org.split(' ')[0]; n += ` (${sp})`; }
+  return n;
+}
+async function chSearch(){
+  const q = $('chQ').value.trim(); if (!q || CH.busy) return;
+  CH.busy = true; chMsg('<span class="loading"></span>搜索靶点…'); $('chList').innerHTML = '';
+  try {
+    const js = await chGet('target/search.json', {q, limit: 25, only: 'target_chembl_id,pref_name,organism,target_type'});
+    CH.targets = (js.targets || []).filter(t => t.target_type && /SINGLE PROTEIN|PROTEIN COMPLEX|PROTEIN FAMILY|SELECTIVITY GROUP|PROTEIN-PROTEIN/.test(t.target_type));
+    if (!CH.targets.length){ chMsg('没找到匹配的蛋白靶点，换个写法试试（基因名如 JAK1、BTK，或 UniProt 名）。', 'warn'); return; }
+    chMsg('');
+    $('chList').innerHTML = `<div class="chhead">选择靶点</div>` + CH.targets.slice(0, 12).map((t, k) => `
+      <button class="chitem" data-k="${k}"><b>${esc(t.pref_name)}</b><span>${esc(t.target_chembl_id)} · ${esc(t.organism || '')} · ${esc((t.target_type || '').toLowerCase())}</span></button>`).join('');
+    $('chList').querySelectorAll('.chitem').forEach(b => b.onclick = () => chPickTarget(CH.targets[+b.dataset.k]));
+  } catch(e){ chNetErr(e); } finally { CH.busy = false; }
+}
+async function chPickTarget(t){
+  if (CH.busy) return; CH.busy = true; CH.target = t; CH.acts = [];
+  $('chList').innerHTML = '';
+  const MAX = 12000;
+  try {
+    let next = null, page = 0, total = null;
+    const only = 'molecule_chembl_id,document_chembl_id,document_year,document_journal,standard_type,pchembl_value';
+    do {
+      chMsg(`<span class="loading"></span>读取 ${esc(t.pref_name)} 的活性数据… ${CH.acts.length}${total ? ' / ' + Math.min(total, MAX) : ''}`);
+      const js = next ? await chGet(next) : await chGet('activity.json', {target_chembl_id: t.target_chembl_id, pchembl_value__isnull: 'false', limit: 1000, only});
+      total = js.page_meta ? js.page_meta.total_count : null;
+      CH.acts.push(...(js.activities || []));
+      next = js.page_meta && js.page_meta.next; page++;
+    } while (next && CH.acts.length < MAX);
+    if (!CH.acts.length){ chMsg('这个靶点在 ChEMBL 里没有可用的定量活性数据（pChEMBL）。', 'warn'); return; }
+    // group by document
+    const by = new Map();
+    CH.acts.forEach(a => {
+      if (!a.document_chembl_id) return;
+      let d = by.get(a.document_chembl_id);
+      if (!d){ d = {id: a.document_chembl_id, year: a.document_year, journal: a.document_journal, mols: new Set(), p: [], types: {}}; by.set(a.document_chembl_id, d); }
+      d.mols.add(a.molecule_chembl_id); const p = parseFloat(a.pchembl_value); if (!isNaN(p)) d.p.push(p);
+      d.types[a.standard_type] = (d.types[a.standard_type] || 0) + 1;
+    });
+    CH.docs = [...by.values()].filter(d => d.mols.size >= 5).sort((a, b) => b.mols.size - a.mols.size);
+    const capped = total && total > CH.acts.length;
+    // titles for the top documents
+    const top = CH.docs.slice(0, 40);
+    try {
+      for (let k = 0; k < top.length; k += 20){
+        const ids = top.slice(k, k + 20).map(d => d.id).join(',');
+        const js = await chGet('document.json', {document_chembl_id__in: ids, limit: 20, only: 'document_chembl_id,title,authors,journal,year,volume,first_page,doi,doc_type'});
+        (js.documents || []).forEach(x => { const d = by.get(x.document_chembl_id); if (d) Object.assign(d, {title: x.title, authors: x.authors, journal: x.journal || d.journal, year: x.year || d.year, volume: x.volume, first_page: x.first_page, doi: x.doi, doc_type: x.doc_type}); });
+      }
+    } catch(e){ console.warn('doc titles', e); }
+    chRenderDocs(capped, total);
+  } catch(e){ chNetErr(e); } finally { CH.busy = false; }
+}
+function chRenderDocs(capped, total){
+  const t = CH.target;
+  chMsg(`${esc(t.pref_name)}：${CH.acts.length} 条活性记录${capped ? `（共 ${total} 条，只读了前 ${CH.acts.length} 条）` : ''}，${CH.docs.length} 篇文献/专利有 ≥5 个化合物。点一篇载入。`);
+  const sortSel = `<select id="chSort"><option value="n">按化合物数</option><option value="year">按年份（新→旧）</option><option value="p">按最高 pChEMBL</option></select>`;
+  const filt = `<input type="text" id="chFilter" placeholder="筛选：标题 / 作者 / 期刊" style="flex:1;min-width:120px">`;
+  $('chList').innerHTML = `<div class="chhead" style="display:flex;gap:6px;align-items:center">${sortSel}${filt}</div><div id="chDocs"></div>`;
+  const draw = () => {
+    const f = ($('chFilter').value || '').toLowerCase(), s = $('chSort').value;
+    let docs = CH.docs.filter(d => !f || [d.title, d.authors, d.journal].join(' ').toLowerCase().includes(f));
+    docs = docs.slice().sort((a, b) => s === 'year' ? (b.year || 0) - (a.year || 0) : s === 'p' ? Math.max(...b.p) - Math.max(...a.p) : b.mols.size - a.mols.size);
+    $('chDocs').innerHTML = docs.slice(0, 60).map(d => {
+      const pmin = Math.min(...d.p), pmax = Math.max(...d.p);
+      const types = Object.entries(d.types).sort((a, b) => b[1] - a[1]).slice(0, 2).map(x => x[0]).join(' / ');
+      const isPat = d.doc_type === 'PATENT' || (!d.journal && /^CHEMBL/.test(d.id) && !d.title);
+      return `<button class="chitem" data-id="${esc(d.id)}"><b>${esc(d.title || d.id)}</b>
+        <span>${esc([d.journal || (isPat ? '专利/其他' : ''), d.year, d.volume && d.first_page ? `${d.volume}, ${d.first_page}` : ''].filter(Boolean).join(' · '))}</span>
+        <span>${d.mols.size} 个化合物 · ${esc(types)} · pChEMBL ${pmin.toFixed(1)}–${pmax.toFixed(1)}</span></button>`;
+    }).join('') || '<div class="hint">没有匹配的文献。</div>';
+    $('chDocs').querySelectorAll('.chitem').forEach(b => b.onclick = () => chLoadDoc(CH.docs.find(d => d.id === b.dataset.id)));
+  };
+  $('chSort').onchange = draw; $('chFilter').oninput = draw; draw();
+}
+function median(a){ const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+function fmtNum(v){ if (v == null || !isFinite(v)) return ''; const a = Math.abs(v); return a >= 1000 ? String(Math.round(v)) : a >= 100 ? v.toFixed(0) : a >= 10 ? (+v.toPrecision(3)).toString() : (+v.toPrecision(2)).toString(); }
+async function chLoadDoc(d){
+  if (CH.busy || !d) return; CH.busy = true;
+  try {
+    const acts = []; let next = null;
+    const only = 'molecule_chembl_id,canonical_smiles,target_chembl_id,target_pref_name,target_organism,standard_type,standard_relation,standard_value,standard_units,pchembl_value,assay_type,assay_chembl_id,data_validity_comment';
+    do {
+      chMsg(`<span class="loading"></span>载入 ${esc(d.id)} 的全部数据（活性 + ADME）… ${acts.length}`);
+      const js = next ? await chGet(next) : await chGet('activity.json', {document_chembl_id: d.id, limit: 1000, only});
+      acts.push(...(js.activities || [])); next = js.page_meta && js.page_meta.next;
+    } while (next && acts.length < 20000);
+    const mols = new Map();     // id -> smiles
+    const cols = new Map();     // key -> {label, kind, values: Map(mol -> [v]), qual: Map(mol -> rel), primary}
+    const tgtId = CH.target && CH.target.target_chembl_id;
+    acts.forEach(a => {
+      if (!a.molecule_chembl_id || !a.canonical_smiles) return;
+      if (a.data_validity_comment) return;
+      mols.set(a.molecule_chembl_id, a.canonical_smiles);
+      let key, label, kind, val, rel = '';
+      if (a.pchembl_value != null && (a.assay_type === 'B' || a.assay_type === 'F')){
+        const tn = shortTarget(a.target_pref_name, a.target_organism);
+        key = `p|${a.target_chembl_id}|${a.standard_type}`; label = `${tn} ${a.standard_type} (nM)`; kind = 'pot';
+        val = Math.pow(10, 9 - parseFloat(a.pchembl_value));
+      } else if (a.assay_type === 'A' && a.standard_value != null && a.standard_type){
+        const u = a.standard_units ? ` (${a.standard_units})` : '';
+        key = `a|${a.standard_type}|${a.standard_units || ''}`; label = `${a.standard_type}${u}`; kind = 'adme';
+        val = parseFloat(a.standard_value); rel = a.standard_relation && a.standard_relation !== '=' ? a.standard_relation.replace(/'/g, '') : '';
+        if (isNaN(val)) return;
+      } else return;
+      let c = cols.get(key);
+      if (!c){ c = {key, label, kind, values: new Map(), qual: new Map(), primary: a.target_chembl_id === tgtId}; cols.set(key, c); }
+      if (!c.values.has(a.molecule_chembl_id)) c.values.set(a.molecule_chembl_id, []);
+      c.values.get(a.molecule_chembl_id).push(val);
+      if (rel) c.qual.set(a.molecule_chembl_id, rel);
+    });
+    const nMol = mols.size;
+    if (nMol < 2){ chMsg('这篇文献里能用的化合物太少。', 'warn'); return; }
+    let list = [...cols.values()].map(c => ({...c, n: c.values.size})).filter(c => c.n >= Math.max(2, Math.ceil(nMol * 0.25)));
+    // de-duplicate labels
+    const seen = {}; list.forEach(c => { seen[c.label] = (seen[c.label] || 0) + 1; });
+    list.sort((a, b) => (b.primary - a.primary) || ((a.kind === 'pot' ? 0 : 1) - (b.kind === 'pot' ? 0 : 1)) || (b.n - a.n));
+    const pot = list.filter(c => c.kind === 'pot').slice(0, 7), adme = list.filter(c => c.kind === 'adme').slice(0, 6);
+    list = [...pot, ...adme];
+    if (!list.length){ chMsg('这篇文献里没有覆盖足够化合物的数据列。', 'warn'); return; }
+    // rows: order by primary potency (best first) if present
+    const prim = list.find(c => c.primary) || list[0];
+    const agg = (c, m) => { const v = c.values.get(m); if (!v) return null; return c.kind === 'pot' ? Math.pow(10, v.map(x => Math.log10(x)).reduce((s, x) => s + x, 0) / v.length) : median(v); };
+    const ids = [...mols.keys()].sort((a, b) => { const va = agg(prim, a), vb = agg(prim, b); if (va == null) return 1; if (vb == null) return -1; return va - vb; });
+    const header = ['ID', 'SMILES', ...list.map(c => c.label)];
+    const lines = [header.join('\t')];
+    ids.forEach(m => lines.push([m, mols.get(m), ...list.map(c => { const v = agg(c, m); return v == null ? '' : (c.qual.get(m) || '') + fmtNum(v); })].join('\t')));
+    const text = lines.join('\n');
+    const cite = [d.authors ? d.authors.split(',')[0].trim() + ' et al.' : '', d.journal, d.year, d.volume && d.first_page ? `${d.volume}, ${d.first_page}` : ''].filter(Boolean).join(', ');
+    S.pendingSource = {text, note: `数据来源：ChEMBL（${d.id}${cite ? '：' + cite : ''}${d.doi ? '，doi:' + d.doi : ''}），CC BY-SA 3.0。活性列为 pChEMBL 换算的 nM（同一化合物多条记录取几何平均），ADME 列取中位数。`};
+    $('input').value = text;
+    $('title').value = (d.title ? d.title.replace(/\.$/, '') : d.id).slice(0, 80);
+    chMsg(`已载入 ${esc(d.id)}：${nMol} 个化合物，${pot.length} 列活性${adme.length ? `、${adme.length} 列 ADME` : '（这篇没有 ADME 数据）'}。${d.doi ? `<a href="https://doi.org/${esc(d.doi)}" target="_blank">原文</a> · ` : ''}<a href="https://www.ebi.ac.uk/chembl/explore/document/${esc(d.id)}" target="_blank">ChEMBL 页面</a> · <a href="#" id="chBack">← 回到文献列表</a>`);
+    const back = $('chBack'); if (back) back.onclick = e => { e.preventDefault(); chRenderDocs(false, null); };
+    $('chList').innerHTML = '';
+    run();
+  } catch(e){ chNetErr(e); } finally { CH.busy = false; }
+}
+$('chGo').onclick = chSearch;
+$('chQ').onkeydown = e => { if (e.key === 'Enter') chSearch(); };
 </script>
 
 </body>

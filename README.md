@@ -6,6 +6,18 @@
 
 > 🔒 所有计算都在浏览器本地完成（RDKit.js / WebAssembly），结构和数据不会上传到任何服务器。
 
+## 从 ChEMBL 载入（新）
+
+左上角输入靶点（如 JAK1、BTK、KRAS）→ 选靶点 → 列出这个靶点下 ≥5 个化合物的所有文献/专利（一篇基本就是一个药化系列），可按化合物数、年份、最高活性排序或按关键词筛选 → 点一篇，这篇里的全部数据自动载入五个视图：
+
+- 活性：所有有 pChEMBL 的结合/功能实验，按「靶点 + 活性类型」分列（比如 JAK1 Ki、JAK2 Ki、JAK3 Ki），同一化合物多条记录取几何平均，换算成 nM
+- ADME：同一篇里的 ADME 类实验（assay type A），按「类型 + 单位」分列，取中位数
+- 页面、PNG 和 PPT 上自动带出处（文献 ID、期刊、DOI、CC BY-SA 3.0）
+
+浏览器直接调用 [ChEMBL REST API](https://www.ebi.ac.uk/chembl/api/data/docs)，只发送靶点名和文献 ID。热门靶点数据量大，最多读取前 12000 条活性记录。
+
+注意：这个功能只在 GitHub Pages 版或本地运行时可用；嵌在 Claude 里的版本不允许访问外部网站。
+
 ![SAR 表](docs/sar-table.png)
 
 ## 五个视图
