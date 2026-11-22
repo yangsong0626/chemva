@@ -125,6 +125,20 @@ table.cmp th{white-space:normal}
 .chitem:hover{border-color:#9db8d6;background:#f7faff}
 .chitem b{display:block;font-weight:600;color:var(--ink)}
 .chitem span{display:block;color:var(--muted);font-size:11.5px}
+.icards{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:4px}
+.icard{flex:1 1 130px;background:#f7f8fa;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.icard span{display:block;font-size:11.5px;color:var(--muted)}
+.icard b{display:block;font-size:17px;margin-top:1px}
+.icard i{display:block;font-style:normal;font-size:11.5px;color:var(--muted);margin-top:1px}
+.isec{font-size:13px;font-weight:600;color:var(--ink);margin:18px 0 8px;display:flex;align-items:center;gap:8px}
+.isec:after{content:"";flex:1;height:1px;background:var(--line)}
+button.mini{font-size:11.5px;padding:2px 8px;border-radius:6px;order:3}
+.inarr{margin:0;padding-left:22px;font-size:13.5px;line-height:1.75}
+.inarr li{margin-bottom:5px}
+.ichart{border:1px solid var(--line);border-radius:8px;overflow:auto;background:#fff;padding:4px}
+table.itab th{cursor:default}
+table.itab tr.cliff td{background:#fdf1ee}
+table.itab tr.cliff td:first-child{box-shadow:inset 3px 0 0 #c8402f}
 footer{padding:4px 22px 24px;color:var(--muted);font-size:12px}
 </style>
 </head>
@@ -195,7 +209,7 @@ footer{padding:4px 22px 24px;color:var(--muted);font-size:12px}
 
   <main>
     <div class="card">
-      <div class="tabs" id="viewTabs"><button data-v="table" class="on">SAR 表</button><button data-v="route">演变路线</button><button data-v="scatter">散点图</button><button data-v="cards">化合物卡片</button><button data-v="compare">系列对比</button></div>
+      <div class="tabs" id="viewTabs"><button data-v="table" class="on">SAR 表</button><button data-v="route">演变路线</button><button data-v="scatter">散点图</button><button data-v="cards">化合物卡片</button><button data-v="compare">系列对比</button><button data-v="insight">自动解读</button></div>
       <div class="out-head">
         <input class="title" id="title" value="SAR 表" aria-label="表格标题">
         <div class="exports">
@@ -2200,6 +2214,549 @@ async function chLoadDoc(d){
 }
 $('chGo').onclick = chSearch;
 $('chQ').onkeydown = e => { if (e.key === 'Enter') chSearch(); };
+</script>
+
+<script>
+"use strict";
+/* ======================= auto insight ======================= */
+S.ins = {minFold: 3};
+(() => {
+  const cb = document.querySelector('#viewTabs button[data-v=insight]'), prev = cb.onclick;
+  cb.onclick = () => { if (['SAR 表', '先导化合物演变路线', '活性 vs 性质', '重点化合物', '系列对比'].includes($('title').value)) $('title').value = '自动解读'; prev(); };
+})();
+const _rerender4 = rerender;
+rerender = function(){ if (S.result && S.view === 'insight') return renderInsight(); return _rerender4(); };
+
+/* ---- stats ---- */
+function mean(a){ return a.reduce((s, x) => s + x, 0) / a.length; }
+function pearson(x, y){
+  const n = x.length; if (n < 3) return null;
+  const mx = mean(x), my = mean(y);
+  let s = 0, sx = 0, sy = 0;
+  for (let i = 0; i < n; i++){ s += (x[i] - mx) * (y[i] - my); sx += (x[i] - mx) ** 2; sy += (y[i] - my) ** 2; }
+  if (sx <= 0 || sy <= 0) return null;
+  return {r: s / Math.sqrt(sx * sy), n};
+}
+function betacf(a, b, x){
+  const EPS = 3e-12, FPMIN = 1e-300;
+  let qab = a + b, qap = a + 1, qam = a - 1, c = 1, d = 1 - qab * x / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN; d = 1 / d; let h = d;
+  for (let m = 1; m <= 200; m++){
+    const m2 = 2 * m;
+    let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d; const del = d * c; h *= del;
+    if (Math.abs(del - 1) < EPS) break;
+  }
+  return h;
+}
+function gammaln(z){
+  const g = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+  let x = z, y = z, tmp = x + 5.5; tmp -= (x + 0.5) * Math.log(tmp);
+  let ser = 1.000000000190015;
+  for (let j = 0; j < 6; j++) ser += g[j] / ++y;
+  return -tmp + Math.log(2.5066282746310005 * ser / x);
+}
+function betai(a, b, x){
+  if (x <= 0) return 0; if (x >= 1) return 1;
+  const bt = Math.exp(gammaln(a + b) - gammaln(a) - gammaln(b) + a * Math.log(x) + b * Math.log(1 - x));
+  return x < (a + 1) / (a + b + 2) ? bt * betacf(a, b, x) / a : 1 - bt * betacf(b, a, 1 - x) / b;
+}
+function corrP(r, n){            // two-sided p for a Pearson r
+  const df = n - 2; if (df < 1) return 1;
+  if (Math.abs(r) >= 1) return 0;
+  const t2 = r * r * df / (1 - r * r);
+  return betai(df / 2, 0.5, df / (df + t2));
+}
+function fmtP(p){ return p < 0.001 ? 'p<0.001' : 'p=' + p.toFixed(p < 0.01 ? 3 : 2); }
+
+/* ---- potency axis ---- */
+function potencyAxis(){
+  const pc = primaryCol(); if (!pc) return null;
+  const pp = potencyP(pc);
+  if (pp) return {col: pc, label: pp.label, unitLabel: shortName(pc), get: r => { const v = numVal(r, pc); return v && v > 0 ? pp.off - Math.log10(v) : null; }, log: true, isPotency: true};
+  const vals = S.result.valid.map(r => numVal(r, pc)).filter(v => v != null);
+  if (pc.dir === 'low' && vals.length && vals.every(v => v > 0))
+    return {col: pc, label: '−log10(' + shortName(pc) + ')', unitLabel: shortName(pc), get: r => { const v = numVal(r, pc); return v && v > 0 ? -Math.log10(v) : null; }, log: true};
+  return {col: pc, label: shortName(pc), unitLabel: shortName(pc), get: r => numVal(r, pc), log: false, raw: true, dir: pc.dir};
+}
+
+/* ---- matched pairs ---- */
+function rNameOf(rec, L){ const c = rec.Rcell && rec.Rcell[L]; if (c && c.text) return c.text; return routeName(rec.R && rec.R[L]); }
+function fragSmilesFromAtoms(mol, keep){
+  // build a fragment molblock from `keep` atom indices, with a dummy atom at each boundary bond
+  try {
+    const mb = mol.get_molblock().split('\n');
+    const na = parseInt(mb[3].substr(0, 3)), nb = parseInt(mb[3].substr(3, 3));
+    const atomLines = mb.slice(4, 4 + na), bondLines = mb.slice(4 + na, 4 + na + nb);
+    const bonds = bondLines.map(l => [parseInt(l.substr(0, 3)) - 1, parseInt(l.substr(3, 3)) - 1, l]);
+    const K = new Set(keep);
+    const order = [...K].sort((a, b) => a - b), idx = {};
+    order.forEach((a, i) => idx[a] = i + 1);
+    const lines = [], bl = [];
+    order.forEach(a => lines.push(atomLines[a]));
+    let extra = 0;
+    bonds.forEach(([a, b, l]) => {
+      if (K.has(a) && K.has(b)) bl.push([idx[a], idx[b], l]);
+      else if (K.has(a) || K.has(b)){
+        const inside = K.has(a) ? a : b;
+        extra++; lines.push('    0.0000    0.0000    0.0000 *   0  0  0  0  0  0  0  0  0  0  0  0');
+        bl.push([idx[inside], order.length + extra, l]);
+      }
+    });
+    const pad = n => String(n).padStart(3, ' ');
+    const out = ['', '  Chemva', '', pad(lines.length) + pad(bl.length) + '  0  0  0  0  0  0  0  0999 V2000',
+      ...lines, ...bl.map(([a, b, l]) => pad(a) + pad(b) + l.substr(6)), 'M  END'];
+    const m = RD.get_mol(out.join('\n')); if (!m) return null;
+    const s = m.get_smiles(); m.delete(); return s;
+  } catch(e){ return null; }
+}
+function components(mol, atoms){
+  // connected components of `atoms` within mol
+  const A = new Set(atoms); if (!A.size) return [];
+  const j = JSON.parse(mol.get_json()).molecules[0];
+  const adj = {}; A.forEach(a => adj[a] = []);
+  (j.bonds || []).forEach(b => { const [x, y] = b.atoms; if (A.has(x) && A.has(y)){ adj[x].push(y); adj[y].push(x); } });
+  const seen = new Set(), out = [];
+  for (const a of A){
+    if (seen.has(a)) continue;
+    const comp = [], st = [a]; seen.add(a);
+    while (st.length){ const x = st.pop(); comp.push(x); for (const y of adj[x]) if (!seen.has(y)){ seen.add(y); st.push(y); } }
+    out.push(comp);
+  }
+  return out;
+}
+function mcsPair(a, b){
+  // returns {fa, fb} fragment smiles for a single-site difference, or null
+  let ml = null, q = null;
+  try {
+    ml = new RD.MolList(); ml.append(a.mol); ml.append(b.mol);
+    const js = JSON.parse(RD.get_mcs_as_json(ml, JSON.stringify({RingMatchesRingOnly: true, CompleteRingsOnly: true, Timeout: 1})));
+    if (!js.smarts || js.numAtoms < 6) return null;
+    q = RD.get_qmol(js.smarts); if (!q) return null;
+    const ma = JSON.parse(a.mol.get_substruct_match(q)).atoms || [], mb = JSON.parse(b.mol.get_substruct_match(q)).atoms || [];
+    if (!ma.length || !mb.length) return null;
+    const na = a.mol.get_num_atoms(), nb = b.mol.get_num_atoms();
+    const da = [...Array(na).keys()].filter(i => !ma.includes(i)), db = [...Array(nb).keys()].filter(i => !mb.includes(i));
+    if (da.length > 12 || db.length > 12) return null;
+    const ca = components(a.mol, da), cb = components(b.mol, db);
+    if (ca.length > 1 || cb.length > 1) return null;
+    if (!ca.length && !cb.length) return {fa: '（立体化学）', fb: '（立体化学）', stereo: true};
+    return {fa: ca.length ? (fragSmilesFromAtoms(a.mol, ca[0]) || '?') : 'H', fb: cb.length ? (fragSmilesFromAtoms(b.mol, cb[0]) || '?') : 'H'};
+  } catch(e){ return null; } finally { try { ml && ml.delete(); } catch(e){} try { q && q.delete(); } catch(e){} }
+}
+function fragName(s){ if (!s || s === '?' ) return '?'; if (s === 'H') return 'H'; if (s[0] === '（') return s; return routeName(s.replace(/\[\*\]/g, '[*:1]')); }
+
+function findPairs(ax){
+  const R = S.result, V = R.valid, out = [];
+  const rg = R.mode === 'rgroup' && R.rLabels.length;
+  const matched = rg ? V.filter(r => r.matched) : [];
+  const seenPair = new Set();
+  if (rg){
+    for (let i = 0; i < matched.length; i++) for (let j = i + 1; j < matched.length; j++){
+      const a = matched[i], b = matched[j];
+      const diff = R.rLabels.filter(L => (a.Rcell[L] || {}).key !== (b.Rcell[L] || {}).key);
+      if (diff.length !== 1) continue;
+      const L = diff[0];
+      out.push({a, b, site: L, fa: rNameOf(a, L), fb: rNameOf(b, L), kind: 'R'});
+      seenPair.add(a.i + '|' + b.i);
+    }
+  }
+  // MCS fallback for the rest (cap the work)
+  const rest = rg ? V.filter(r => !r.matched) : V;
+  if (rest.length){
+    const cand = [];
+    const others = rg ? V : V;
+    for (let i = 0; i < others.length; i++) for (let j = i + 1; j < others.length; j++){
+      const a = others[i], b = others[j];
+      if (seenPair.has(a.i + '|' + b.i)) continue;
+      if (rg && a.matched && b.matched) continue;
+      if (tani(a, b) < 0.5) continue;
+      cand.push([a, b]);
+    }
+    cand.sort((p, q) => tani(q[0], q[1]) - tani(p[0], p[1]));
+    let budget = 600;
+    for (const [a, b] of cand){
+      if (budget-- <= 0) break;
+      const d = mcsPair(a, b); if (!d) continue;
+      out.push({a, b, site: '结构', fa: fragName(d.fa), fb: fragName(d.fb), kind: d.stereo ? 'stereo' : 'MCS'});
+    }
+  }
+  // orient each pair so b is the better one on the potency axis, attach deltas
+  const cols = S.cols.filter(c => c.role === 'data');
+  const pairs = [];
+  out.forEach(p => {
+    let {a, b, fa, fb} = p;
+    const pa = ax.get(a), pb = ax.get(b);
+    if (pa == null || pb == null) return;
+    const better = ax.raw && ax.dir === 'low' ? pa > pb : pb > pa;
+    if (!better){ [a, b] = [b, a]; [fa, fb] = [fb, fa]; }
+    const va = ax.get(a), vb = ax.get(b);
+    const dp = ax.log ? vb - va : null;
+    const fold = ax.log ? Math.pow(10, Math.abs(vb - va)) : (va && vb ? Math.max(va, vb) / Math.min(va, vb) : null);
+    const deltas = cols.map(c => {
+      const x = numVal(a, c), y = numVal(b, c);
+      if (x == null || y == null || x <= 0 || y <= 0) return null;
+      const ratio = y / x, f = ratio >= 1 ? ratio : 1 / ratio;
+      const better = c.dir === 'none' ? null : (c.dir === 'low' ? ratio < 1 : ratio > 1);
+      return {col: c, f, up: ratio >= 1, better, txt: f < 1.15 ? '≈' : (f < 10 ? f.toFixed(1) : Math.round(f)) + '×' + (ratio >= 1 ? '↑' : '↓')};
+    });
+    pairs.push({...p, a, b, fa, fb, dp, fold, deltas, sim: tani(a, b)});
+  });
+  pairs.sort((x, y) => (y.fold || 0) - (x.fold || 0));
+  return pairs;
+}
+
+/* ---- R-group effects ---- */
+function rEffects(ax){
+  const R = S.result; if (R.mode !== 'rgroup' || !R.rLabels.length) return [];
+  const matched = R.valid.filter(r => r.matched);
+  const all = matched.map(r => ax.get(r)).filter(v => v != null);
+  if (all.length < 4) return [];
+  const base = mean(all);
+  return R.rLabels.map(L => {
+    const by = new Map();
+    matched.forEach(r => {
+      const c = r.Rcell[L]; if (!c) return; const v = ax.get(r); if (v == null) return;
+      if (!by.has(c.key)) by.set(c.key, {name: rNameOf(r, L), vals: []});
+      by.get(c.key).vals.push(v);
+    });
+    const groups = [...by.values()].map(g => ({name: g.name, n: g.vals.length, m: mean(g.vals), d: mean(g.vals) - base})).sort((a, b) => b.m - a.m);
+    return {label: L, base, groups, spread: groups.length > 1 ? groups[0].m - groups[groups.length - 1].m : 0};
+  }).filter(x => x.groups.length > 1).sort((a, b) => b.spread - a.spread);
+}
+
+/* ---- trends ---- */
+function trends(ax){
+  const V = S.result.valid.filter(r => r.desc && ax.get(r) != null);
+  if (V.length < 5) return [];
+  const y = V.map(r => ax.get(r));
+  const props = [
+    {k: 'cLogP', label: 'cLogP', get: d => d.CrippenClogP},
+    {k: 'MW', label: 'MW', get: d => d.amw},
+    {k: 'HA', label: '重原子数', get: d => d.NumHeavyAtoms},
+    {k: 'TPSA', label: 'TPSA', get: d => d.tpsa},
+  ];
+  const out = props.map(p => {
+    const x = V.map(r => p.get(r.desc));
+    const c = pearson(x, y); if (!c) return null;
+    return {label: p.label, r: c.r, n: c.n, p: corrP(c.r, c.n)};
+  }).filter(Boolean);
+  // other data columns vs potency
+  S.cols.filter(c => c.role === 'data' && c !== ax.col).forEach(c => {
+    const pairs = V.map(r => [numVal(r, c), ax.get(r)]).filter(([a]) => a != null && a > 0);
+    if (pairs.length < 5) return;
+    // correlate the OTHER column's goodness with the axis, so r>0 = improves together, r<0 = trade-off
+    const good = v => c.dir === 'low' ? -Math.log10(v) : c.dir === 'high' ? Math.log10(v) : Math.log10(v);
+    const cc = pearson(pairs.map(p => good(p[0])), pairs.map(p => p[1]));
+    if (!cc) return;
+    out.push({label: shortName(c), prose: colProse(c), r: cc.r, n: cc.n, p: corrP(cc.r, cc.n), other: true, dir: c.dir});
+  });
+  return out;
+}
+
+/* ---- model ---- */
+function insightModel(){
+  buildTable();
+  const R = S.result, ax = potencyAxis();
+  if (!ax) return null;
+  const V = R.valid.filter(r => ax.get(r) != null);
+  if (V.length < 3) return null;
+  const vals = V.map(r => ax.get(r));
+  const best = V.reduce((b, r) => (ax.raw && ax.dir === 'low' ? ax.get(r) < ax.get(b) : ax.get(r) > ax.get(b)) ? r : b);
+  const lipe = ax.isPotency ? V.filter(r => r.desc).map(r => ({r, v: ax.get(r) - r.desc.CrippenClogP})).sort((a, b) => b.v - a.v) : [];
+  const le = ax.isPotency ? V.filter(r => r.desc).map(r => ({r, v: 1.37 * ax.get(r) / r.desc.NumHeavyAtoms})).sort((a, b) => b.v - a.v) : [];
+  const pairs = findPairs(ax);
+  const eff = rEffects(ax);
+  const tr = trends(ax);
+  const flags = V.filter(r => r.desc).map(r => {
+    const bad = LIMITS.filter(L => L.get(r.desc) > L.lim).map(L => L.label);
+    return bad.length ? {r, bad} : null;
+  }).filter(Boolean);
+  const rawVals = V.map(r => numVal(r, ax.col)).filter(v => v != null && v > 0);
+  return {ax, V, vals, best, lipe, le, pairs, eff, tr, flags,
+    span: rawVals.length ? Math.max(...rawVals) / Math.min(...rawVals) : null,
+    lo: rawVals.length ? Math.min(...rawVals) : null, hi: rawVals.length ? Math.max(...rawVals) : null};
+}
+
+/* ---- narrative ---- */
+function colProse(c){ return c.name.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/selectivity/i, '选择性').trim(); }
+function insightText(M){
+  const L = [], ax = M.ax, n = M.V.length, u = ax.unitLabel;
+  const P = ax.isPotency;              // a real potency axis (molar units) — only then do 活性/LipE talk
+  const W = P ? '活性' : u;
+  L.push(`这个系列一共 ${n} 个化合物有 ${u} 数据。${P ? '最好的' : '最优的'}是 ${M.best.id}（${u} ${M.best.raw[ax.col.idx]}）` +
+    (M.span && M.span > 2 ? `，整个系列跨了约 ${M.span >= 10 ? Math.round(M.span) : M.span.toFixed(1)} 倍。` : '。'));
+  if (P && M.lipe.length){
+    const top = M.lipe[0];
+    L.push(top.r === M.best
+      ? `LipE 最高的也是 ${top.r.id}（${top.v.toFixed(1)}），活性和脂溶性效率落在同一个化合物上，这种情况不多见。`
+      : `LipE 最高的是 ${top.r.id}（${top.v.toFixed(1)}），不是活性最好的那个 —— 后面要降脂溶性的话，可以从它这条支线找起。`);
+  }
+  const clogp = M.tr.find(t => t.label === 'cLogP' && !t.other), ha = M.tr.find(t => t.label === '重原子数' && !t.other);
+  if (P && clogp){
+    if (clogp.p < 0.05 && clogp.r > 0.4) L.push(`活性和 cLogP 明显正相关（r=${clogp.r.toFixed(2)}，n=${clogp.n}，${fmtP(clogp.p)}），活性提升有相当一部分是靠加脂溶性换来的，后面要盯紧溶解度和代谢。`);
+    else if (clogp.p < 0.05 && clogp.r < -0.4) L.push(`活性和 cLogP 负相关（r=${clogp.r.toFixed(2)}，${fmtP(clogp.p)}），降脂溶性反而更好，这是个好信号。`);
+    else L.push(`活性和 cLogP 看不出相关（r=${clogp.r.toFixed(2)}，n=${clogp.n}，${fmtP(clogp.p)}），活性不是靠堆脂溶性来的。`);
+  }
+  if (P && ha && ha.p < 0.05 && ha.r > 0.4) L.push(`活性和分子大小正相关（r=${ha.r.toFixed(2)}，${fmtP(ha.p)}），一直往大了做，配体效率会越来越差。`);
+  M.tr.filter(t => t.other).forEach(t => {
+    if (t.dir === 'none' || t.n < 6) return;
+    const nm = t.prose || t.label, w = (x) => `${nm} 和${W}${x}`;
+    if (t.p < 0.05 && t.r <= -0.5) L.push(w(`此消彼长（r=${t.r.toFixed(2)}，n=${t.n}，${fmtP(t.p)}）—— 这个系列里${W}做上去，${nm} 就会变差，是个真实的取舍。`));
+    else if (t.p < 0.05 && t.r >= 0.5) L.push(w(`同向变化（r=${t.r.toFixed(2)}，n=${t.n}，${fmtP(t.p)}）：往一个方向优化，两边一起走。如果 ${nm} 其实是反靶，那就是说选择性在这个系列里不好拉开。`));
+    else if (Math.abs(t.r) < 0.3) L.push(w(`基本不相关（r=${t.r.toFixed(2)}，n=${t.n}），可以独立调，不用拿${W}去换。`));
+  });
+  if (M.eff.length){
+    const e = M.eff[0];
+    if (e.spread >= 0.5) L.push(`${e.label} 位对${W}影响最大，最好和最差的基团差约 ${Math.round(Math.pow(10, e.spread))} 倍：${e.groups[0].name} 最好，${e.groups[e.groups.length - 1].name} 最差。`);
+  }
+  // cliffs: avoid repeating the same compound over and over
+  const used = new Set(), cliffs = [];
+  for (const p of M.pairs){
+    if (!p.fold || p.fold < 10) break;
+    if (cliffs.length >= 3) break;
+    if (used.has(p.a.i) || used.has(p.b.i)) continue;
+    cliffs.push(p); used.add(p.a.i); used.add(p.b.i);
+  }
+  if (!cliffs.length && M.pairs.length && M.pairs[0].fold >= 10) cliffs.push(M.pairs[0]);
+  cliffs.forEach(p => L.push(`${p.a.id} → ${p.b.id}：${p.site === '结构' ? '' : p.site + ' 位 '}${p.fa} 换成 ${p.fb}，${W}差约 ${Math.round(p.fold)} 倍，这一步值得单独讲。`));
+  if (!cliffs.length && M.pairs.length >= 3) L.push(`配对比较里没有超过 10 倍的突变，SAR 比较平缓 —— 可能还没摸到这个口袋的关键相互作用。`);
+  if (M.pairs.length < 2) L.push(`能严格配对（只差一处）的化合物对太少，这批数据还撑不起基团层面的结论。`);
+  if (n < 8) L.push(`只有 ${n} 个点，上面这些相关性都不稳，换两个化合物结论就可能反过来 —— 当线索看，别当结论。`);
+  if (M.flags.length) L.push(`有 ${M.flags.length} 个化合物超出 Ro5 / Veber 限值：${M.flags.slice(0, 3).map(f => f.r.id + ' 的 ' + f.bad.join('、')).join('；')}${M.flags.length > 3 ? ' 等' : ''}。`);
+  return L;
+}
+/* ---- charts ---- */
+const SVGF = `font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',Arial,sans-serif`;
+function effectChartSvg(M, W){
+  const eff = M.eff.slice(0, 3); if (!eff.length) return '';
+  const rowH = 22, head = 24, padT = 26, padB = 30, left = 150;
+  const rows = eff.reduce((s, e) => s + e.groups.length, 0);
+  const H = padT + eff.length * head + rows * rowH + padB;
+  const all = eff.flatMap(e => e.groups.map(g => g.d));
+  const lim = Math.max(0.3, Math.max(...all.map(Math.abs)));
+  const plotW = W - left - 30, cx = left + plotW / 2;
+  const sx = d => cx + d / lim * (plotW / 2);
+  let g = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="${SVGF}"><rect width="100%" height="100%" fill="#fff"/>`;
+  g += `<text x="${left}" y="14" font-size="11.5" fill="#6b7380">相对系列平均的 ${esc(M.ax.label)} 变化（右 = 更好）</text>`;
+  let y = padT;
+  eff.forEach(e => {
+    g += `<text x="6" y="${y + 14}" font-size="12.5" font-weight="600" fill="#1d2430">${esc(e.label)} 位</text>`;
+    y += head;
+    e.groups.forEach(gr => {
+      const x0 = Math.min(cx, sx(gr.d)), w = Math.abs(sx(gr.d) - cx);
+      g += `<text x="${left - 8}" y="${y + 15}" font-size="12" fill="#4a5361" text-anchor="end">${esc(gr.name)}${gr.n > 1 ? ` <tspan fill="#9aa2ad">×${gr.n}</tspan>` : ''}</text>`;
+      g += `<rect x="${x0}" y="${y + 4}" width="${Math.max(w, 1)}" height="${rowH - 9}" rx="2" fill="${gr.d >= 0 ? '#79b894' : '#dd8f84'}"/>`;
+      g += `<text x="${gr.d >= 0 ? sx(gr.d) + 5 : sx(gr.d) - 5}" y="${y + 15}" font-size="11" fill="#6b7380" text-anchor="${gr.d >= 0 ? 'start' : 'end'}">${gr.d >= 0 ? '+' : '−'}${Math.abs(gr.d).toFixed(2)}</text>`;
+      y += rowH;
+    });
+  });
+  g += `<line x1="${cx}" y1="${padT - 4}" x2="${cx}" y2="${y + 2}" stroke="#c9ced6"/>`;
+  g += `<text x="${cx}" y="${H - 10}" font-size="11" fill="#8a929e" text-anchor="middle">0 = 系列平均 ${M.ax.label} ${M.eff[0].base.toFixed(2)}</text>`;
+  return g + `</svg>`;
+}
+function lipeChartSvg(M, W){
+  if (!M.lipe.length) return '';
+  const data = M.lipe.slice(0, 12), rowH = 22, padT = 28, padB = 26, left = 120;
+  const H = padT + data.length * rowH + padB;
+  const lo = Math.min(...data.map(d => d.v)), hi = Math.max(...data.map(d => d.v));
+  const a = Math.max(0, Math.floor(lo - 0.5)), b = Math.ceil(hi + 0.3);
+  const plotW = W - left - 60, sx = v => left + (v - a) / (b - a) * plotW;
+  const ps = data.map(d => M.ax.get(d.r)), pLo = Math.min(...ps), pHi = Math.max(...ps);
+  let g = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="${SVGF}"><rect width="100%" height="100%" fill="#fff"/>`;
+  g += `<text x="${left}" y="14" font-size="11.5" fill="#6b7380">LipE = ${esc(M.ax.label)} − cLogP（越高越好；颜色深 = 活性强）</text>`;
+  data.forEach((d, k) => {
+    const y = padT + k * rowH, t = pHi > pLo ? (M.ax.get(d.r) - pLo) / (pHi - pLo) : 1;
+    const col = `rgb(${Math.round(190 - 150 * t)},${Math.round(211 - 110 * t)},${Math.round(234 - 90 * t)})`;
+    g += `<text x="${left - 8}" y="${y + 15}" font-size="12" fill="#4a5361" text-anchor="end">${esc(d.r.id)}</text>`;
+    g += `<rect x="${left}" y="${y + 4}" width="${Math.max(sx(d.v) - left, 1)}" height="${rowH - 9}" rx="2" fill="${col}"/>`;
+    g += `<text x="${sx(d.v) + 6}" y="${y + 15}" font-size="11.5" fill="#1d2430">${d.v.toFixed(2)}</text>`;
+  });
+  const yEnd = padT + data.length * rowH;
+  for (let t = a; t <= b; t++) g += `<line x1="${sx(t)}" y1="${padT - 2}" x2="${sx(t)}" y2="${yEnd}" stroke="#eef0f3"/><text x="${sx(t)}" y="${H - 10}" font-size="11" fill="#8a929e" text-anchor="middle">${t}</text>`;
+  return g + `</svg>`;
+}
+
+/* ---- render ---- */
+function renderInsight(){
+  const M = insightModel();
+  if (!M){ out('<div class="empty">自动解读需要一列带单位的活性数据（比如 IC50 (nM)），而且至少 3 个化合物。</div>'); return; }
+  S.insM = M;
+  const ax = M.ax;
+  let h = `<div class="hint" style="margin:-2px 0 12px">下面都是直接从数据算出来的：相关系数、配对比较、基团效应。<b>这些是第一层分析，不是判断</b> —— 结合模式、合成可行性、项目背景都不在数据里，结论还得你来下。</div>`;
+  // overview
+  const cards = [
+    {k: '化合物', v: M.V.length, s: `${ax.unitLabel} 有数据`},
+    {k: ax.isPotency ? '活性跨度' : '数据跨度', v: M.span ? (M.span >= 10 ? Math.round(M.span) + '×' : M.span.toFixed(1) + '×') : '—', s: M.lo != null ? `${fmtNum(M.lo)} – ${fmtNum(M.hi)}` : ''},
+    {k: '最优', v: M.best.id, s: `${ax.unitLabel} ${M.best.raw[ax.col.idx]}`},
+    ...(M.lipe.length ? [{k: 'LipE 最高', v: M.lipe[0].r.id, s: 'LipE ' + M.lipe[0].v.toFixed(2)}] : []),
+    ...(M.le.length ? [{k: 'LE 最高', v: M.le[0].r.id, s: 'LE ' + M.le[0].v.toFixed(3)}] : []),
+    {k: '可比配对', v: M.pairs.length, s: M.pairs.filter(p => p.fold >= 10).length + ' 个 ≥10×'},
+  ];
+  h += `<div class="icards">${cards.map(c => `<div class="icard"><span>${esc(c.k)}</span><b>${esc(String(c.v))}</b><i>${esc(c.s)}</i></div>`).join('')}</div>`;
+  // narrative
+  h += `<div class="isec">自动解读（初稿）<button id="insCopy" class="mini">复制</button></div><ol class="inarr" id="inarr">${insightText(M).map(t => `<li>${esc(t)}</li>`).join('')}</ol>`;
+  // trends
+  if (M.tr.length){
+    h += `<div class="isec">趋势（Pearson 相关）</div><div class="tablewrap" style="max-height:none"><table class="sar itab"><thead><tr><th style="text-align:left">与 ${esc(ax.label)} 的关系</th><th>r</th><th>n</th><th>p</th><th style="text-align:left">读法</th></tr></thead><tbody>`;
+    M.tr.forEach(t => {
+      const strong = t.p < 0.05 && Math.abs(t.r) >= 0.4;
+      const read = !strong ? (t.p < 0.05 ? '有弱相关' : '看不出相关')
+        : t.other ? (t.dir === 'none' ? (t.r > 0 ? '正相关，明显' : '负相关，明显') : (t.r > 0 ? '和活性一起变好' : '和活性此消彼长'))
+        : (t.r > 0 ? '正相关，明显' : '负相关，明显');
+      h += `<tr><td style="text-align:left">${esc(t.label)}</td><td class="num ${strong ? (t.r > 0 ? 'down' : 'up') : ''}">${t.r.toFixed(2)}</td><td class="num">${t.n}</td><td class="num">${fmtP(t.p).replace(/^p[=<]/, '')}</td><td style="text-align:left;color:var(--muted)">${read}</td></tr>`;
+    });
+    h += `</tbody></table></div><div class="hint">n 小的时候相关系数很不稳，p>0.05 只代表这批数据看不出来，不代表没有关系。</div>`;
+  }
+  // R effects
+  const ec = effectChartSvg(M, 720);
+  if (ec) h += `<div class="isec">基团效应（哪个位置、哪个基团最有用）</div><div class="ichart">${ec}</div>`;
+  // lipe chart
+  const lc = lipeChartSvg(M, 720);
+  if (lc) h += `<div class="isec">配体效率排名</div><div class="ichart">${lc}</div>`;
+  // pairs
+  if (M.pairs.length){
+    const dcols = S.cols.filter(c => c.role === 'data');
+    const show = M.pairs.filter(p => !p.fold || p.fold >= S.ins.minFold);
+    h += `<div class="isec">配对比较（只差一处的化合物对）<span style="font-weight:400;color:var(--muted);font-size:12px">　只看 ≥ <select id="insFold">${[1, 2, 3, 5, 10].map(v => `<option ${S.ins.minFold === v ? 'selected' : ''}>${v}</option>`).join('')}</select> 倍</span></div>`;
+    h += `<div class="tablewrap" style="max-height:none"><table class="sar itab"><thead><tr><th style="text-align:left">改动</th><th>化合物</th>${dcols.map(c => `<th>${esc(shortName(c))}</th>`).join('')}<th>相似度</th></tr></thead><tbody>`;
+    show.slice(0, 40).forEach(p => {
+      h += `<tr${p.fold >= 10 ? ' class="cliff"' : ''}><td style="text-align:left">${p.site === '结构' ? '' : `<b>${esc(p.site)}</b> `}${esc(p.fa)} <span style="color:var(--muted)">→</span> ${esc(p.fb)}</td>
+        <td style="white-space:nowrap;font-size:12px">${esc(p.a.id)} → ${esc(p.b.id)}</td>`;
+      p.deltas.forEach(d => h += `<td class="num ${d && d.better === true ? 'up' : d && d.better === false ? 'down' : ''}">${d ? esc(d.txt) : '—'}</td>`);
+      h += `<td class="num" style="color:var(--muted)">${p.sim.toFixed(2)}</td></tr>`;
+    });
+    h += `</tbody></table></div>`;
+    if (show.length > 40) h += `<div class="hint">还有 ${show.length - 40} 对没显示，提高倍数门槛可以筛掉一些。</div>`;
+    h += `<div class="hint">↑↓ 是后者相对前者的变化，绿色 = 变好。红底行是 ≥10 倍的突变（activity cliff），通常是整个系列里最值得讲的点。</div>`;
+  }
+  if (M.flags.length){
+    h += `<div class="isec">性质风险</div><div class="hint" style="margin-top:0">${M.flags.map(f => `${esc(f.r.id)}：${esc(f.bad.join('、'))} 超限`).join('　·　')}</div>`;
+  }
+  if (S.sourceNote) h += `<div class="legend" style="margin-top:12px">${esc(S.sourceNote)}</div>`;
+  out(h);
+  const fs = $('insFold'); if (fs) fs.onchange = e => { S.ins.minFold = +e.target.value; renderInsight(); };
+  const cp = $('insCopy'); if (cp) cp.onclick = async () => {
+    try { await navigator.clipboard.writeText(insightText(M).map((t, i) => `${i + 1}. ${t}`).join('\n')); toast('解读文字已复制'); }
+    catch(e){ toast('浏览器不允许复制'); }
+  };
+  ['btnPptx','btnPng'].forEach(id => $(id).disabled = false);
+}
+
+/* ---- exports ---- */
+async function exportInsightPng(){
+  const M = S.insM || insightModel(); if (!M) return toast('没有可解读的数据');
+  const W = 820, pad = 28, sc = 2;
+  const title = $('title').value.trim() || '自动解读';
+  const lines = insightText(M);
+  const ec = effectChartSvg(M, W - 2 * pad), lc = lipeChartSvg(M, W - 2 * pad);
+  const ecImg = ec ? await svgToImage(ec) : null, lcImg = lc ? await svgToImage(lc) : null;
+  const probe = document.createElement('canvas').getContext('2d');
+  probe.font = `13.5px ${CFONT}`;
+  const wrapped = lines.map(t => wrapLines(probe, t, W - 2 * pad - 24));
+  const textH = wrapped.reduce((s, w) => s + w.length * 21 + 8, 0);
+  const trH = M.tr.length ? 26 + M.tr.length * 22 + 14 : 0;
+  const H = pad + 40 + 76 + 26 + textH + trH + (ecImg ? ecImg.height + 32 : 0) + (lcImg ? lcImg.height + 32 : 0) + (S.sourceNote ? 30 : 0) + pad;
+  const cv = document.createElement('canvas'); cv.width = W * sc; cv.height = H * sc;
+  const ctx = cv.getContext('2d'); ctx.scale(sc, sc); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.textBaseline = 'middle';
+  let y = pad;
+  ctx.fillStyle = '#1d2430'; ctx.font = `600 20px ${CFONT}`; ctx.fillText(title, pad, y + 13); y += 40;
+  // cards
+  const cards = [['化合物', String(M.V.length)], [M.ax.isPotency ? '活性跨度' : '数据跨度', M.span ? (M.span >= 10 ? Math.round(M.span) + '×' : M.span.toFixed(1) + '×') : '—'], ['最优', M.best.id], ...(M.lipe.length ? [['LipE 最高', M.lipe[0].r.id]] : []), ['可比配对', String(M.pairs.length)]];
+  const cw = (W - 2 * pad - (cards.length - 1) * 10) / cards.length;
+  cards.forEach((c, k) => {
+    const x = pad + k * (cw + 10);
+    ctx.fillStyle = '#f7f8fa'; rrect(ctx, x, y, cw, 62, 8); ctx.fill();
+    ctx.fillStyle = '#6b7380'; ctx.font = `11.5px ${CFONT}`; ctx.fillText(c[0], x + 10, y + 16);
+    ctx.fillStyle = '#1d2430'; ctx.font = `600 16px ${CFONT}`; ctx.fillText(c[1], x + 10, y + 40, cw - 20);
+  });
+  y += 76;
+  ctx.fillStyle = '#6b7380'; ctx.font = `600 12.5px ${CFONT}`; ctx.fillText('自动解读（初稿，请自行核对）', pad, y + 10); y += 26;
+  wrapped.forEach((w, i) => {
+    ctx.fillStyle = '#3d6fa8'; ctx.font = `600 13.5px ${CFONT}`; ctx.fillText((i + 1) + '.', pad, y + 10);
+    ctx.fillStyle = '#1d2430'; ctx.font = `13.5px ${CFONT}`;
+    w.forEach((l, k) => ctx.fillText(l, pad + 20, y + 10 + k * 21));
+    y += w.length * 21 + 8;
+  });
+  if (M.tr.length){
+    ctx.fillStyle = '#6b7380'; ctx.font = `600 12.5px ${CFONT}`; ctx.fillText(`与 ${M.ax.label} 的相关性`, pad, y + 10); y += 26;
+    M.tr.forEach(t => {
+      ctx.fillStyle = '#4a5361'; ctx.font = `12.5px ${CFONT}`; ctx.fillText(t.label, pad + 8, y + 10);
+      const strong = t.p < 0.05 && Math.abs(t.r) >= 0.4;
+      ctx.fillStyle = strong ? (t.r > 0 ? '#b4382b' : '#1f7a45') : '#1d2430';
+      ctx.font = `600 12.5px ${CFONT}`; ctx.fillText(`r = ${t.r.toFixed(2)}`, pad + 180, y + 10);
+      ctx.fillStyle = '#8a929e'; ctx.font = `12px ${CFONT}`; ctx.fillText(`n=${t.n}, ${fmtP(t.p)}`, pad + 260, y + 10);
+      y += 22;
+    });
+    y += 14;
+  }
+  if (ecImg){ ctx.drawImage(ecImg, pad, y); y += ecImg.height + 32; }
+  if (lcImg){ ctx.drawImage(lcImg, pad, y); y += lcImg.height + 32; }
+  if (S.sourceNote){ ctx.fillStyle = '#6b7380'; ctx.font = `11px ${CFONT}`; ctx.fillText(S.sourceNote, pad, y + 8, W - 2 * pad); }
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  await saveFile(fname('png'), blob);
+}
+async function exportInsightPptx(){
+  const M = S.insM || insightModel(); if (!M) return toast('没有可解读的数据');
+  const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE';
+  const SW = 13.33, SH = 7.5, Mg = 0.5, title = $('title').value.trim() || '自动解读';
+  const foot = s => { if (S.sourceNote) s.addText(S.sourceNote, {x: Mg, y: SH - 0.4, w: SW - 2 * Mg - 1.4, h: 0.3, fontSize: 8, color: '6B7380'}); s.addText('Chemva', {x: SW - 1.6, y: SH - 0.32, w: 1.3, h: 0.25, fontSize: 8, color: 'A0A6B0', align: 'right'}); };
+  // slide 1: findings
+  const s1 = pptx.addSlide();
+  s1.addText(title, {x: Mg, y: 0.28, w: SW - 2 * Mg, h: 0.55, fontSize: 24, bold: true, color: '1D2430', fontFace: 'Arial'});
+  const cards = [['化合物', String(M.V.length)], [M.ax.isPotency ? '活性跨度' : '数据跨度', M.span ? (M.span >= 10 ? Math.round(M.span) + '×' : M.span.toFixed(1) + '×') : '—'], ['最优', M.best.id], ...(M.lipe.length ? [['LipE 最高', M.lipe[0].r.id + ' (' + M.lipe[0].v.toFixed(1) + ')']] : []), ['可比配对', String(M.pairs.length)]];
+  const cw = (SW - 2 * Mg - (cards.length - 1) * 0.12) / cards.length;
+  cards.forEach((c, k) => {
+    const x = Mg + k * (cw + 0.12);
+    s1.addShape(pptx.ShapeType.roundRect, {x, y: 0.95, w: cw, h: 0.72, fill: {color: 'F7F8FA'}, line: {color: 'EEF0F3', width: 0.75}, rectRadius: 0.06});
+    s1.addText([{text: c[0] + '\n', options: {fontSize: 10, color: '6B7380'}}, {text: c[1], options: {fontSize: 15, bold: true, color: '1D2430'}}], {x: x + 0.08, y: 0.98, w: cw - 0.16, h: 0.66, margin: 2, valign: 'middle', fontFace: 'Arial'});
+  });
+  s1.addText(insightText(M).map(t => ({text: t, options: {bullet: {type: 'number'}, breakLine: true}})), {x: Mg, y: 1.85, w: SW - 2 * Mg, h: SH - 2.4, fontSize: 13, color: '1D2430', fontFace: 'Arial', lineSpacingMultiple: 1.25, valign: 'top'});
+  foot(s1);
+  // slide 2: charts
+  const ec = effectChartSvg(M, 720), lc = lipeChartSvg(M, 720);
+  if (ec || lc){
+    const s2 = pptx.addSlide();
+    s2.addText('基团效应与配体效率', {x: Mg, y: 0.28, w: SW - 2 * Mg, h: 0.55, fontSize: 22, bold: true, color: '1D2430', fontFace: 'Arial'});
+    const imgs = [];
+    if (ec){ const i = await svgToImage(ec); imgs.push({data: await svgToPng(ec, 720, i.height, 2.5), w: 720, h: i.height}); }
+    if (lc){ const i = await svgToImage(lc); imgs.push({data: await svgToPng(lc, 720, i.height, 2.5), w: 720, h: i.height}); }
+    const colW = (SW - 2 * Mg - 0.3) / imgs.length;
+    imgs.forEach((im, k) => {
+      const s = Math.min(colW / (im.w / 96), (SH - 1.4) / (im.h / 96));
+      s2.addImage({data: im.data, x: Mg + k * (colW + 0.3), y: 1.0, w: im.w / 96 * s, h: im.h / 96 * s});
+    });
+    foot(s2);
+  }
+  // slide 3: pairs
+  const dcols = S.cols.filter(c => c.role === 'data');
+  const show = M.pairs.filter(p => !p.fold || p.fold >= S.ins.minFold).slice(0, 14);
+  if (show.length){
+    const s3 = pptx.addSlide();
+    s3.addText('配对比较', {x: Mg, y: 0.28, w: SW - 2 * Mg, h: 0.55, fontSize: 22, bold: true, color: '1D2430', fontFace: 'Arial'});
+    const head = [{text: '改动', options: {bold: true, align: 'left', fill: {color: 'F3F5F8'}}}, {text: '化合物', options: {bold: true, fill: {color: 'F3F5F8'}}},
+      ...dcols.map(c => ({text: shortName(c), options: {bold: true, fill: {color: 'F3F5F8'}}}))];
+    const body = show.map(p => [
+      {text: (p.site === '结构' ? '' : p.site + ' ') + p.fa + ' → ' + p.fb, options: {align: 'left'}},
+      {text: p.a.id + ' → ' + p.b.id, options: {fontSize: 9}},
+      ...p.deltas.map(d => ({text: d ? d.txt : '—', options: {color: d && d.better === true ? '1F7A45' : d && d.better === false ? 'B4382B' : '1D2430', bold: !!(d && d.better !== null)}}))
+    ]);
+    const w = SW - 2 * Mg, cw2 = [w * 0.3, w * 0.22];
+    dcols.forEach(() => cw2.push((w - cw2[0] - cw2[1]) / dcols.length));
+    s3.addTable([head, ...body], {x: Mg, y: 1.0, colW: cw2, rowH: Math.min(0.34, (SH - 1.6) / (show.length + 1)), fontSize: 10.5, fontFace: 'Arial', align: 'center', valign: 'middle', border: {type: 'solid', pt: 0.5, color: 'E6E8EC'}, margin: 0.03, autoPage: false});
+    foot(s3);
+  }
+  const blob = await pptx.write({outputType: 'blob'});
+  await saveFile(fname('pptx'), blob);
+}
+$('btnPptx').onclick = () => busy('btnPptx', ({route: exportRoutePptx, scatter: exportScatterPptx, cards: exportCardsPptx, compare: exportCmpPptx, insight: exportInsightPptx})[S.view] || exportPptx);
+$('btnPng').onclick = () => busy('btnPng', ({route: exportRoutePng, scatter: exportScatterPng, cards: exportCardsPng, compare: exportCmpPng, insight: exportInsightPng})[S.view] || exportPng);
 </script>
 
 </body>
