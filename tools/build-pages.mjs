@@ -78,11 +78,11 @@ async function resolveTarget(gene){
         [...(c.target_component_synonyms || []).map(s => s.component_synonym), c.accession]);
       if (syns.some(s => String(s).toUpperCase() === gene.toUpperCase()))
         return { id: t.target_chembl_id, pref: full.pref_name || t.pref_name, organism: full.organism || t.organism,
-                 accession: (full.target_components || [])[0]?.accession || null };
+                 accession: (full.target_components || [])[0]?.accession || null, confirmed: true };
     } catch (e){ /* try the next candidate */ }
   }
   const t = tryList[0];
-  return { id: t.target_chembl_id, pref: t.pref_name, organism: t.organism, accession: null };
+  return { id: t.target_chembl_id, pref: t.pref_name, organism: t.organism, accession: null, confirmed: false };
 }
 
 /* ---------- activities for a target, grouped into series by document ---------- */
@@ -134,17 +134,26 @@ async function targetData(t){
   }
 
   // structures for the most potent compounds
-  const top = [...best.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const ranked = [...best.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
   const smiles = new Map();
-  if (top.length){
+  for (let k = 0; k < ranked.length && smiles.size < 20; k += 20){
     try {
-      const js = await api('molecule.json', { molecule_chembl_id__in: top.map(x => x[0]).join(','), limit: 20,
+      const js = await api('molecule.json', { molecule_chembl_id__in: ranked.slice(k, k + 20).map(x => x[0]).join(','), limit: 20,
         only: 'molecule_chembl_id,molecule_structures,pref_name' });
       (js.molecules || []).forEach(m => {
         const s = m.molecule_structures?.canonical_smiles;
         if (s) smiles.set(m.molecule_chembl_id, { smi: s, name: m.pref_name || null });
       });
     } catch (e){ /* structures are optional */ }
+    await sleep(120);
+  }
+  // keep the most potent compounds that actually draw as a readable 2D structure
+  const top = [];
+  for (const [id, p] of ranked){
+    if (top.length >= 6) break;
+    const hit = smiles.get(id); if (!hit) continue;
+    if (heavyAtoms(hit.smi) > MAX_HEAVY) continue;
+    top.push([id, p]);
   }
 
   const ps = [...best.values()];
@@ -158,16 +167,40 @@ async function targetData(t){
 }
 
 /* ---------- rendering ---------- */
+const MAX_HEAVY = 55;              // above this a 2D depiction is unreadable anyway (peptides, macrocycles)
+function heavyAtoms(smi){
+  let m; try { m = RD.get_mol(smi); return m ? m.get_num_atoms() : 999; } catch (e){ return 999; } finally { try { m && m.delete(); } catch (e){} }
+}
+// RDKit repeats the same long inline style on every bond; hoist them into classes.
+// `tag` keeps class names unique between the SVGs on one page.
+function shrinkSvg(svg, tag){
+  svg = svg.replace(/<\?xml[^>]*\?>/, '').replace(/<!--[\s\S]*?-->/g, '')
+           .replace(/\s+class='[^']*'/g, '')
+           .replace(/(\d+\.\d{2,})/g, m => String(Math.round(parseFloat(m) * 10) / 10))
+           .replace(/<svg[^>]*?(width='[^']*'\s*height='[^']*'\s*viewBox='[^']*')[^>]*>/,
+                    `<svg xmlns='http://www.w3.org/2000/svg' $1>`);
+  const seen = new Map();
+  svg = svg.replace(/ style='([^']*)'/g, (_, st) => {
+    if (!seen.has(st)) seen.set(st, `${tag}${seen.size}`);
+    return ` class='${seen.get(st)}'`;
+  });
+  if (seen.size){
+    const css = [...seen.entries()].map(([st, cls]) => `.${cls}{${st}}`).join('');
+    svg = svg.replace(/>/, `><style>${css}</style>`);
+  }
+  return svg.replace(/>\s+</g, '><').trim();
+}
+let svgSeq = 0;
 function structSvg(smi, w = 200, h = 150){
   let m;
   try {
     m = RD.get_mol(smi);
     if (!m) return '';
     try { m.set_new_coords(true); m.straighten_depiction(); } catch (e){}
-    return m.get_svg_with_highlights(JSON.stringify({
+    return shrinkSvg(m.get_svg_with_highlights(JSON.stringify({
       width: w, height: h, bondLineWidth: 1.4, fixedBondLength: 17, padding: 0.06,
       clearBackground: false, addStereoAnnotation: true, minFontSize: 10, maxFontSize: 16
-    })).replace(/<\?xml[^>]*\?>/, '');
+    })), 'k' + (svgSeq++) + '_');
   } catch (e){ return ''; } finally { try { m && m.delete(); } catch (e){} }
 }
 const nMtxt = p => { const nM = Math.pow(10, 9 - p); return nM < 1 ? nM.toFixed(2) : num(nM); };
@@ -280,7 +313,7 @@ function targetPage(t, g, d){
 </tr>`;
   }).join('\n');
 
-  const mols = d.top.slice(0, 8).map(m => `<div class="mol">
+  const mols = d.top.slice(0, 6).map(m => `<div class="mol">
   ${structSvg(m.smi)}
   <em>${nMtxt(m.p)} nM</em>
   <a href="https://www.ebi.ac.uk/chembl/explore/compound/${esc(m.id)}">${esc(m.name || m.id)}</a>
@@ -375,7 +408,7 @@ async function main(){
   if (!list.length){ console.error('no targets matched'); process.exit(1); }
 
   await fs.mkdir(path.join(ROOT, 't'), { recursive: true });
-  const built = [], skipped = [];
+  const built = [], skipped = [], unconfirmed = [];
   for (const g of list){
     process.stdout.write(`${g.gene} … `);
     try {
@@ -387,7 +420,8 @@ async function main(){
       }
       await fs.writeFile(path.join(ROOT, 't', `${g.gene}.html`), targetPage(t, g, d));
       built.push({ g, t, d });
-      console.log(`${t.id}  ${d.nMols} mols, ${d.series.length} series`);
+      console.log(`${t.id}  ${d.nMols} mols, ${d.series.length} series${t.confirmed ? '' : '   [!] gene symbol not confirmed in ChEMBL synonyms — check ' + t.pref}`);
+      if (!t.confirmed) unconfirmed.push(`${g.gene}=${t.id} (${t.pref})`);
     } catch (e){
       console.log('failed: ' + e.message); skipped.push([g.gene, e.message]);
     }
@@ -404,5 +438,6 @@ async function main(){
   await fs.writeFile(path.join(ROOT, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);
   console.log(`\nbuilt ${built.length} target pages, skipped ${skipped.length}`);
   if (skipped.length) console.log('skipped: ' + skipped.map(s => s.join('=')).join(', '));
+  if (unconfirmed.length) console.log('\n[!] resolved by search only, please eyeball these: ' + unconfirmed.join(', '));
 }
 main().catch(e => { console.error(e); process.exit(1); });
