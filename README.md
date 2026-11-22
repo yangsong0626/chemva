@@ -63,6 +63,21 @@ python3 -m http.server 8000
 # 浏览器打开 http://localhost:8000
 ```
 
+## 靶点页（SEO）
+
+`tools/build-pages.mjs` 从 ChEMBL 抓数据，为 `tools/targets.json` 里的每个基因生成一个静态页面 `t/<GENE>.html`：靶点概况、活性最强的化合物（RDKit 渲染的结构图）、按文献分组的 SAR 系列表，外加 `targets.html` 索引、`sitemap.xml` 和 `robots.txt`。每个系列都深链回工具（`index.html#doc-CHEMBLxxxx`），点一下就在浏览器里打开。
+
+这些页面是**静态 HTML**，搜索引擎能直接读到内容，不依赖 JS。
+
+```bash
+node tools/build-pages.mjs            # 全部靶点
+node tools/build-pages.mjs JAK1 BTK   # 只重建这两个
+```
+
+GitHub Action（`.github/workflows/build-pages.yml`）每周一自动重跑并提交变化，也可以在 Actions 页面手动触发。
+
+深链：`index.html#target-CHEMBL2835` 打开某个靶点，`index.html#doc-CHEMBL2385026` 直接载入某个系列。
+
 ## 示例数据
 
 两组示例都是公开数据，在 `data/` 目录下：

@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chemva · 化学家的出图工具</title>
+<title>Chemva · 化学家的 SAR 出图工具</title>
+<meta name="description" content="粘贴 SMILES 和活性数据，一键生成 SAR 表、先导化合物演变路线、活性–性质散点图、化合物卡片和系列对比，导出可编辑的 PowerPoint。也能直接从 ChEMBL 按靶点载入公开数据。全部在浏览器本地计算，结构不上传。">
+<link rel="canonical" href="https://yangsong0626.github.io/chemva/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Chemva · 化学家的 SAR 出图工具">
+<meta property="og:description" content="粘贴 SMILES 和活性数据，一键出 SAR 表、演变路线、散点图和系列对比，直接进 PPT。浏览器本地计算，结构不上传。">
+<meta property="og:url" content="https://yangsong0626.github.io/chemva/">
+<meta name="twitter:card" content="summary">
 <style>
 :root{
   --bg:#f6f7f9; --panel:#fff; --ink:#1d2430; --muted:#6b7380; --line:#e3e6eb;
@@ -154,7 +161,7 @@ footer{padding:4px 22px 24px;color:var(--muted);font-size:12px}
     <div class="card" id="chCard">
       <h2><b>★</b>从 ChEMBL 载入</h2>
       <div class="row" style="margin-top:0"><input type="text" id="chQ" placeholder="靶点：JAK1、BTK、KRAS…" style="flex:1"><button class="primary" id="chGo">搜索</button></div>
-      <div class="hint">选靶点 → 选一篇文献（一篇基本就是一个药化系列）→ 活性和 ADME 自动载入下面所有视图。只把靶点名发给 ChEMBL，你粘贴的数据不会上传。</div>
+      <div class="hint">选靶点 → 选一篇文献（一篇基本就是一个药化系列）→ 活性和 ADME 自动载入下面所有视图。只把靶点名发给 ChEMBL，你粘贴的数据不会上传。也可以从<a href="targets.html">靶点索引</a>直接进来。</div>
       <div id="chMsg"></div>
       <div id="chList" class="chlist"></div>
     </div>
@@ -223,7 +230,7 @@ footer{padding:4px 22px 24px;color:var(--muted);font-size:12px}
     </div>
   </main>
 </div>
-<footer>Chemva MVP · 渲染与 R 基团分解基于 RDKit.js · 问题和建议：<a href="https://github.com/yangsong0626/chemva/issues">github.com/yangsong0626/chemva</a></footer>
+<footer>Chemva MVP · 渲染与 R 基团分解基于 RDKit.js · <a href="targets.html">靶点索引</a> · 问题和建议：<a href="https://github.com/yangsong0626/chemva/issues">github.com/yangsong0626/chemva</a></footer>
 <div class="toast" id="toast"></div>
 
 <script src="vendor/RDKit_minimal.js"></script>
@@ -300,6 +307,7 @@ initRDKitModule({locateFile: f => 'vendor/' + f}).then(mod => {
   SMALL_GROUPS.forEach(([s,l]) => { const m = RD.get_mol(s); if (m) { smallMap[m.get_smiles()] = l; m.delete(); } });
   $('status').innerHTML = '在左边粘贴数据，或点 <b>示例 1 / 示例 2</b> 看看效果。';
   buildPropChips();
+  try { chFromHash(); } catch(e){ console.warn(e); }
 }).catch(err => {
   $('status').innerHTML = '化学引擎加载失败：' + esc(String(err)) + '<br>请刷新页面重试。';
 });
@@ -2212,6 +2220,27 @@ async function chLoadDoc(d){
     run();
   } catch(e){ chNetErr(e); } finally { CH.busy = false; }
 }
+/* deep links: #target-CHEMBL2835 opens a target, #doc-CHEMBL2385026 loads one series */
+async function chOpenTargetId(id){
+  if (CH.busy) return;
+  chMsg('<span class="loading"></span>读取靶点…');
+  try {
+    const js = await chGet(`target/${encodeURIComponent(id)}.json`, {});
+    await chPickTarget({target_chembl_id: js.target_chembl_id || id, pref_name: js.pref_name || id, organism: js.organism, target_type: js.target_type});
+  } catch(e){ chNetErr(e); }
+}
+async function chOpenDocId(id){
+  if (CH.busy) return;
+  await chLoadDoc({id, mols: new Set(), p: [], types: {}});
+}
+function chFromHash(){
+  const h = (location.hash || '').replace(/^#/, '');
+  let m = h.match(/^target-(CHEMBL\d+)$/i);
+  if (m) return chOpenTargetId(m[1].toUpperCase());
+  m = h.match(/^doc-(CHEMBL\d+)$/i);
+  if (m) return chOpenDocId(m[1].toUpperCase());
+}
+window.addEventListener('hashchange', chFromHash);
 $('chGo').onclick = chSearch;
 $('chQ').onkeydown = e => { if (e.key === 'Enter') chSearch(); };
 </script>
